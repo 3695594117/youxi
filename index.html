@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>逃杀·狩灵·灭魔</title>
+    <title>大逃杀·狩灵神殿 | 全功能小地图</title>
     <style>
         * {
             user-select: none;
@@ -11,19 +11,16 @@
             touch-action: manipulation;
             box-sizing: border-box;
         }
-
         body {
             margin: 0;
             min-height: 100vh;
             background: #0a2f1f;
             overflow: hidden;
-            font-family: 'Segoe UI', 'Poppins', 'Microsoft Yahei', system-ui, sans-serif;
+            font-family: 'Segoe UI', 'Poppins', system-ui, sans-serif;
             position: fixed;
             width: 100%;
             height: 100%;
         }
-
-        /* 全屏游戏画布 */
         #gameCanvas {
             position: absolute;
             top: 0;
@@ -34,8 +31,7 @@
             background: #2a5e2a;
             cursor: crosshair;
         }
-
-        /* 小地图容器 (点击缩放/标记) */
+        /* 小地图：可点击缩放 + 全屏弹窗模式 */
         .minimap-wrapper {
             position: fixed;
             top: 15px;
@@ -43,16 +39,26 @@
             width: 160px;
             height: 160px;
             border-radius: 20px;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(10px);
             border: 2px solid #ffd966;
             z-index: 30;
             overflow: hidden;
             box-shadow: 0 8px 20px rgba(0,0,0,0.5);
-            transition: all 0.1s ease;
+            transition: 0.1s ease;
         }
-        .minimap-wrapper:active {
-            transform: scale(0.97);
+        .minimap-wrapper.full {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85vw;
+            height: 85vw;
+            max-width: 450px;
+            max-height: 450px;
+            border-radius: 32px;
+            z-index: 200;
+            border: 3px solid #ffaa44;
         }
         #minimapCanvas {
             width: 100%;
@@ -71,60 +77,14 @@
             padding: 1px 6px;
             pointer-events: none;
         }
-
-        /* 虚拟按钮区域 (手机/PC 通用) */
-        .controls {
-            position: fixed;
-            bottom: 20px;
-            left: 0;
-            right: 0;
-            display: flex;
-            justify-content: space-between;
-            padding: 0 20px;
-            z-index: 40;
-            pointer-events: none;
-        }
-        .btn-group {
-            pointer-events: auto;
-            display: flex;
-            gap: 18px;
-            background: rgba(0,0,0,0.45);
-            backdrop-filter: blur(10px);
-            padding: 10px 20px;
-            border-radius: 60px;
-            border: 1px solid #ffd96680;
-        }
-        .action-btn {
-            background: #ffcc44;
-            border: none;
-            width: 65px;
-            height: 65px;
-            border-radius: 65px;
-            font-size: 28px;
-            font-weight: bold;
-            color: #2c1e0a;
-            box-shadow: 0 6px 0 #b47c00;
-            transition: 0.05s linear;
-            cursor: pointer;
-            touch-action: manipulation;
-            font-family: monospace;
-        }
-        .action-btn:active {
-            transform: translateY(3px);
-            box-shadow: 0 2px 0 #b47c00;
-        }
-        .skill-btn {
-            background: #6a4eff;
-            color: white;
-            box-shadow: 0 6px 0 #2f1c8a;
-        }
+        /* UI面板 */
         .hp-bar {
             position: fixed;
             top: 15px;
             left: 15px;
             background: #1e1a0ccc;
             backdrop-filter: blur(6px);
-            padding: 8px 16px;
+            padding: 6px 14px;
             border-radius: 40px;
             color: #ffd966;
             font-weight: bold;
@@ -139,221 +99,394 @@
             transform: translateX(-50%);
             background: #000000aa;
             backdrop-filter: blur(6px);
-            padding: 6px 18px;
+            padding: 5px 18px;
             border-radius: 80px;
             color: #f5e2b0;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 13px;
             white-space: nowrap;
             z-index: 30;
-            font-family: monospace;
         }
-        @media (max-width: 700px) {
-            .action-btn { width: 55px; height: 55px; font-size: 24px; }
-            .btn-group { gap: 12px; padding: 6px 16px; }
-            .minimap-wrapper { width: 130px; height: 130px; top: 10px; right: 10px; }
-            .hp-bar { font-size: 12px; top: 8px; left: 8px; }
-            .quest-info { font-size: 12px; top: 8px; white-space: nowrap; }
-        }
-        .cd-overlay {
+        .ult-bar {
             position: fixed;
             bottom: 95px;
             left: 20px;
-            background: #00000099;
-            padding: 4px 12px;
-            border-radius: 30px;
-            font-size: 12px;
-            color: #ffbb66;
-            pointer-events: none;
+            width: 150px;
+            background: #2c2c2c;
+            border-radius: 20px;
+            height: 6px;
+            overflow: hidden;
             z-index: 45;
-            font-weight: bold;
         }
+        .ult-fill {
+            width: 0%;
+            height: 100%;
+            background: #ffaa44;
+            transition: width 0.05s linear;
+        }
+        .ult-text {
+            position: fixed;
+            bottom: 108px;
+            left: 24px;
+            font-size: 10px;
+            color: #ffdd99;
+            font-weight: bold;
+            background: #000000aa;
+            padding: 2px 8px;
+            border-radius: 20px;
+            z-index: 46;
+        }
+        /* 摇杆 */
+        .joystick-container {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 130px;
+            height: 130px;
+            border-radius: 130px;
+            background: rgba(0,0,0,0.45);
+            backdrop-filter: blur(12px);
+            border: 2px solid #ffd966aa;
+            z-index: 50;
+            touch-action: none;
+        }
+        .joystick-base {
+            width: 100%;
+            height: 100%;
+            border-radius: 100%;
+            position: relative;
+        }
+        .joystick-thumb {
+            position: absolute;
+            width: 55px;
+            height: 55px;
+            background: #ffd966dd;
+            border-radius: 55px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 0 3px #ffaa33;
+            pointer-events: none;
+        }
+        .btn-group {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 20px;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-radius: 80px;
+            z-index: 50;
+        }
+        .action-btn {
+            background: #ffcc44;
+            border: none;
+            width: 65px;
+            height: 65px;
+            border-radius: 65px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c1e0a;
+            box-shadow: 0 5px 0 #b47c00;
+            transition: 0.05s linear;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+        .action-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #b47c00; }
+        .skill-btn { background: #6a4eff; color: white; box-shadow: 0 5px 0 #2f1c8a; }
+        .pc-hint {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #000000aa;
+            padding: 5px 12px;
+            border-radius: 30px;
+            font-size: 11px;
+            color: #ccc;
+            pointer-events: none;
+            z-index: 60;
+        }
+        @media (max-width: 700px) {
+            .action-btn { width: 55px; height: 55px; font-size: 24px; }
+            .joystick-container { width: 110px; height: 110px; bottom: 20px; left: 20px; }
+            .joystick-thumb { width: 45px; height: 45px; }
+            .minimap-wrapper { width: 125px; height: 125px; }
+        }
+        /* 大厅菜单 */
+        .menu-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.94);
+            backdrop-filter: blur(15px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+        }
+        .menu-card {
+            background: #1e2b1c;
+            border-radius: 56px;
+            padding: 32px 28px;
+            text-align: center;
+            width: 300px;
+            border: 3px solid #ffd966;
+        }
+        .game-title { font-size: 38px; font-weight: 800; color: #ffd966; margin-bottom: 25px; }
+        .menu-buttons { display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px; }
+        .menu-btn {
+            background: #d4a017;
+            border: none;
+            font-size: 1.3rem;
+            font-weight: bold;
+            padding: 10px 0;
+            border-radius: 60px;
+            color: #2c2c1c;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #6b3c00;
+        }
+        .difficulty-row {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 15px 0;
+        }
+        .diff-btn {
+            background: #3a4a2a;
+            border: 1px solid #ffd966;
+            padding: 6px 24px;
+            border-radius: 40px;
+            font-weight: bold;
+            color: #f5e2b0;
+            cursor: pointer;
+        }
+        .diff-btn.active { background: #ffd966; color: #1f3a1a; border-color: white; }
+        .exit-btn { background: #6a2e2e; color: #ffc6a0; box-shadow: 0 4px 0 #3e1a1a; }
     </style>
 </head>
 <body>
 
 <canvas id="gameCanvas"></canvas>
 
-<!-- 小地图 单击缩放+标记预览 -->
-<div class="minimap-wrapper" id="minimapWrap">
+<div class="minimap-wrapper" id="minimapWrapper">
     <canvas id="minimapCanvas" width="300" height="300"></canvas>
-    <div class="minimap-label">🗺️ 点击缩放 | 红=怪 | 紫=Boss</div>
+    <div class="minimap-label">🗺️ 点击缩放/标记 | 绿线指向标记点</div>
 </div>
 
-<div class="hp-bar">❤️ 生命值: <span id="hpValue">100</span> | ⚔️ 连发模式: <span id="modeStatus">普通</span></div>
-<div class="quest-info">🚪 逃生条件: 击杀 小怪(<span id="mobKill">0</span>/5) 或 击杀 BOSS(0/1)</div>
-<div class="cd-overlay" id="cdInfo">🔫 普攻冷却: 就绪</div>
+<div class="hp-bar">❤️ <span id="hpValue">100</span> / 100</div>
+<div class="quest-info">🏆 胜利: 小怪(<span id="mobKill">0</span>/20) 或 击杀BOSS(10000血)</div>
+<div class="ult-bar"><div class="ult-fill" id="ultFill"></div></div>
+<div class="ult-text" id="ultLabel">✨ 大招就绪</div>
 
-<div class="controls">
-    <div class="btn-group">
-        <button class="action-btn" id="attackBtn">🗡️ 攻</button>
-        <button class="action-btn skill-btn" id="ultraBtn">✨ Q连发</button>
+<div class="joystick-container" id="joystickContainer">
+    <div class="joystick-base" id="joystickBase">
+        <div class="joystick-thumb" id="joystickThumb"></div>
     </div>
 </div>
+
+<div class="btn-group">
+    <button class="action-btn" id="attackBtn">🗡️</button>
+    <button class="action-btn skill-btn" id="ultraBtn">✨</button>
+</div>
+<div class="pc-hint">🖱️ PC: 鼠标瞄准 | E/Q 攻击/大招 | M 地图 | 地图点击标记</div>
+
+<div id="lobbyOverlay" class="menu-overlay">
+    <div class="menu-card">
+        <div class="game-title">🔪 狩灵神殿 🔪</div>
+        <div class="menu-buttons">
+            <button id="startGameBtn" class="menu-btn">⚔️ 开始游戏 ⚔️</button>
+            <button id="exitGameBtn" class="menu-btn exit-btn">🚪 退出游戏</button>
+        </div>
+        <div style="color:#ffdfaa;">⚡ 难度 ⚡</div>
+        <div class="difficulty-row">
+            <button data-diff="low" class="diff-btn active">🐾 低</button>
+            <button data-diff="medium" class="diff-btn">⚡ 中</button>
+            <button data-diff="high" class="diff-btn">🔥 高</button>
+        </div>
+        <p style="font-size: 11px; margin-top: 18px;">👆 摇杆移动 | 击杀20小怪或万血BOSS</p>
+    </div>
+</div>
+
+<!-- 背景音乐 (确保播放) -->
+<audio id="bgmAudio" loop preload="auto" style="display:none;">
+    <source src="https://music.163.com/song/media/outer/url?id=365223550.mp3" type="audio/mpeg">
+</audio>
 
 <script>
     (function(){
         // ---------- 世界配置 ----------
-        const MAP_W = 3200;
-        const MAP_H = 2400;
+        const MAP_W = 3800;
+        const MAP_H = 3000;
         const PLAYER_RADIUS = 32;
-        
-        // 游戏状态
-        let player = {
-            x: MAP_W/2,
-            y: MAP_H/2,
-            hp: 100,
-            maxHp: 100,
-            invincible: 0
-        };
-        let enemies = [];      // 普通小怪 {x,y, hp, radius, speed, type}
-        let boss = null;       // 特殊boss
-        let projectiles = [];   // 子弹 {"桂英"}
-        
+        let player = { x: MAP_W/2, y: MAP_H/2, hp: 100, maxHp: 100, invincible: 0 };
+        let enemies = [];
+        let boss = null;
+        let projectiles = [];
         let normalKills = 0;
         let bossDefeated = false;
         let gameActive = true;
-        let winFlag = false;
+        let currentDifficulty = "medium";
+        let hunterSpeedBase = 2.2;
         
-        // 冷却机制
-        let normalCd = 0;       // 0.3秒冷却 (帧率约60, 冷却帧数18帧)
-        let ultraActive = false; // Q连发模式(无冷却)
-        let ultraDuration = 0;   // 连发剩余持续时间(帧)
+        let attackCd = 0;
+        let ultCooldown = 0;
+        const ULT_MAX_CD = 1800;  // 30秒
         
-        // 追杀者图片替换为新的怪物图片(小怪/boss共用新图)
-        const monsterImg = new Image();
-        monsterImg.crossOrigin = "Anonymous";
-        monsterImg.src = "https://t.tutu.to/img/Lyj86";
-        let monsterReady = false;
-        monsterImg.onload = () => monsterReady = true;
+        let aimDir = { x: 1, y: 0 };
+        let hitEffects = [];
+        let slowMap = new Map();
         
-        // 相机 (跟随玩家)
-        let camera = { x: 0, y: 0 };
+        // 小地图标记点 (点击设置)
+        let markerPoint = { x: null, y: null };
+        
+        // 图片资源
+        const mobImage = new Image();
+        mobImage.crossOrigin = "Anonymous";
+        mobImage.src = "https://t.tutu.to/img/LywgQ";
+        let mobReady = false;
+        mobImage.onload = () => mobReady = true;
+        
+        const bossImage = new Image();
+        bossImage.crossOrigin = "Anonymous";
+        bossImage.src = "https://t.tutu.to/img/Lyj86";
+        let bossReady = false;
+        bossImage.onload = () => bossReady = true;
+        
         let canvas = document.getElementById('gameCanvas');
         let ctx = canvas.getContext('2d');
+        let camera = { x: 0, y: 0 };
         
-        // 小地图相关
+        // 小地图
         let minimapZoom = 1.0;
         let minimapCanvas = document.getElementById('minimapCanvas');
         let mmCtx = minimapCanvas.getContext('2d');
-        
-        // 树木/障碍物 (装饰)
+        let minimapWrap = document.getElementById('minimapWrapper');
         let trees = [];
-        const TREE_COUNT = 70;
+        const TREE_COUNT = 80;
         
-        // ---------- 初始化世界 ----------
-        function initWorld() {
-            // 生成树木
-            trees = [];
-            for(let i=0;i<TREE_COUNT;i++){
-                let tx = 100 + Math.random() * (MAP_W-200);
-                let ty = 100 + Math.random() * (MAP_H-200);
-                trees.push({x:tx, y:ty});
-            }
-            // 生成小怪 5只 (100血)
-            enemies = [];
-            for(let i=0;i<5;i++){
-                let angle = Math.random() * Math.PI*2;
-                let radius = 500 + Math.random() * 400;
-                let ex = player.x + Math.cos(angle)*radius;
-                let ey = player.y + Math.sin(angle)*radius;
-                ex = Math.min(Math.max(ex, 60), MAP_W-60);
-                ey = Math.min(Math.max(ey, 60), MAP_H-60);
-                enemies.push({
-                    x: ex, y: ey, hp: 100, maxHp:100,
-                    radius: 28, speed: 1.0, type: "mob"
+        // UI组件
+        const hpSpan = document.getElementById('hpValue');
+        const killSpan = document.getElementById('mobKill');
+        const ultFill = document.getElementById('ultFill');
+        const ultLabel = document.getElementById('ultLabel');
+        
+        // 移动系统
+        let moveVec = { x: 0, y: 0 };
+        let joystickActive = false;
+        let useJoystick = true;
+        let mouseDragActive = false;
+        let dragTarget = { x: player.x, y: player.y };
+        
+        // 摇杆元素
+        const joystickThumb = document.getElementById('joystickThumb');
+        let joystickCenter = { x:0, y:0 };
+        let joystickRad = 45;
+        
+        // 背景音乐 (确保交互后播放)
+        let bgmAudio = document.getElementById('bgmAudio');
+        let musicStarted = false;
+        
+        function ensureMusicPlay() {
+            if(!musicStarted && gameActive) {
+                musicStarted = true;
+                bgmAudio.play().catch(e=>{
+                    console.log("音乐自动播放失败，等待用户交互");
+                    document.body.addEventListener('click', function once(){
+                        if(gameActive && !musicStarted) {
+                            bgmAudio.play();
+                            musicStarted = true;
+                        }
+                        document.body.removeEventListener('click', once);
+                    }, { once: true });
                 });
             }
-            // 生成Boss (1000血) 位于远处
-            let bx = player.x + (Math.random()>0.5? 800 : -800);
-            let by = player.y + (Math.random()>0.5? 600 : -600);
-            bx = Math.min(Math.max(bx, 150), MAP_W-150);
-            by = Math.min(Math.max(by, 150), MAP_H-150);
-            boss = {
-                x: bx, y: by, hp: 1000, maxHp:1000,
-                radius: 48, speed: 1.3, type: "boss"
-            };
-            normalKills = 0;
-            bossDefeated = false;
-            gameActive = true;
-            winFlag = false;
-            player.hp = player.maxHp;
-            player.invincible = 0;
-            ultraActive = false;
-            ultraDuration = 0;
-            normalCd = 0;
-            updateUI();
         }
         
-        // 小怪AI移动 (缓慢追逐玩家)
-        function updateEnemies() {
-            for(let i=0;i<enemies.length;i++){
-                let e = enemies[i];
-                let dx = player.x - e.x;
-                let dy = player.y - e.y;
-                let len = Math.hypot(dx,dy);
-                if(len > 0.5){
-                    let step = Math.min(e.speed, len-8);
-                    e.x += (dx/len)*step;
-                    e.y += (dy/len)*step;
-                }
-                // 边界
-                e.x = Math.min(Math.max(e.x, e.radius), MAP_W - e.radius);
-                e.y = Math.min(Math.max(e.y, e.radius), MAP_H - e.radius);
+        // ---------- 核心游戏逻辑 ----------
+        function updateUI(){
+            hpSpan.innerText = player.hp;
+            killSpan.innerText = normalKills;
+            let percent = (ultCooldown / ULT_MAX_CD) * 100;
+            ultFill.style.width = (100 - percent) + "%";
+            ultLabel.innerText = ultCooldown > 0 ? `⏳ 大招冷却 ${Math.ceil(ultCooldown/60)/10}s` : `✨ 大招就绪`;
+        }
+        
+        function applySlow(enemy){
+            if(slowMap.has(enemy)){
+                slowMap.get(enemy).timer = 50;
+            } else {
+                let original = enemy.speed;
+                slowMap.set(enemy, { originalSpeed: original, timer: 50 });
+                enemy.speed = original * 0.65;
             }
-            if(boss && !bossDefeated){
-                let dx = player.x - boss.x;
-                let dy = player.y - boss.y;
-                let len = Math.hypot(dx,dy);
-                if(len > 0.5){
-                    let step = Math.min(boss.speed, len-15);
-                    boss.x += (dx/len)*step;
-                    boss.y += (dy/len)*step;
+            hitEffects.push({ entity: enemy, timer: 28 });
+        }
+        
+        function updateDebuffs(){
+            for(let [en, data] of slowMap.entries()){
+                if(!en || en.hp <= 0 || (en.type === "boss" && bossDefeated)){
+                    slowMap.delete(en);
+                    continue;
                 }
-                boss.x = Math.min(Math.max(boss.x, boss.radius), MAP_W - boss.radius);
-                boss.y = Math.min(Math.max(boss.y, boss.radius), MAP_H - boss.radius);
+                data.timer--;
+                if(data.timer <= 0){
+                    en.speed = data.originalSpeed;
+                    slowMap.delete(en);
+                }
+            }
+            for(let i=0;i<hitEffects.length;i++){
+                hitEffects[i].timer--;
+                if(hitEffects[i].timer <= 0) hitEffects.splice(i,1), i--;
             }
         }
         
-        // 子弹自动索敌 (发射桂英文字)
-        function shoot(targetX, targetY){
+        function shootTowards(){
             if(!gameActive) return false;
             let closest = null;
-            let minDist = 500;
-            // 优先锁 boss
+            let minDist = 700;
             if(boss && !bossDefeated){
-                let db = Math.hypot(boss.x - targetX, boss.y - targetY);
+                let db = Math.hypot(boss.x - player.x, boss.y - player.y);
                 if(db < minDist){ minDist = db; closest = boss; }
             }
             for(let e of enemies){
-                let d = Math.hypot(e.x - targetX, e.y - targetY);
+                let d = Math.hypot(e.x - player.x, e.y - player.y);
                 if(d < minDist){ minDist = d; closest = e; }
             }
             if(!closest) return false;
             projectiles.push({
-                x: player.x, y: player.y,
-                target: closest,
-                damage: 25,
-                speed: 12,
-                life: true,
-                text: "桂英"
+                x: player.x, y: player.y, target: closest,
+                damage: 25, speed: 14
             });
             return true;
         }
         
-        // 更新子弹
+        function normalAttack(){
+            if(!gameActive) return;
+            if(attackCd > 0) return;
+            if(shootTowards()) attackCd = 18;
+        }
+        
+        function castUltimate(){
+            if(!gameActive) return;
+            if(ultCooldown > 0) return;
+            ultCooldown = ULT_MAX_CD;
+            updateUI();
+            for(let i=0;i<6;i++) setTimeout(()=>{ if(gameActive) shootTowards(); }, i*90);
+        }
+        
         function updateProjectiles(){
             for(let i=0;i<projectiles.length;i++){
                 let p = projectiles[i];
-                if(!p.target || (p.target.hp <= 0) || (p.target.type==="boss" && bossDefeated)){
+                if(!p.target || p.target.hp <= 0 || (p.target.type==="boss" && bossDefeated)){
                     projectiles.splice(i,1); i--; continue;
                 }
                 let dx = p.target.x - p.x;
                 let dy = p.target.y - p.y;
                 let len = Math.hypot(dx,dy);
-                if(len < 12){
-                    // 命中
+                if(len < 18){
                     p.target.hp -= p.damage;
+                    applySlow(p.target);
                     if(p.target.hp <= 0){
                         if(p.target.type === "mob"){
                             normalKills++;
@@ -363,9 +496,9 @@
                             bossDefeated = true;
                             boss = null;
                         }
+                        updateUI();
                     }
                     projectiles.splice(i,1); i--;
-                    updateUI();
                 } else {
                     let step = Math.min(p.speed, len);
                     p.x += (dx/len)*step;
@@ -374,191 +507,150 @@
             }
         }
         
-        // 玩家受击 & 无敌
-        function checkPlayerHurt(){
-            if(player.invincible > 0){
-                player.invincible--;
-                return;
-            }
+        function updateEnemies(){
             for(let e of enemies){
-                let dist = Math.hypot(player.x - e.x, player.y - e.y);
-                if(dist < PLAYER_RADIUS + e.radius){
-                    player.hp -= 12;
-                    player.invincible = 18;
-                    if(player.hp <= 0){ gameActive=false; winFlag=false; alert("游戏失败，点击刷新重新挑战"); location.reload(); }
+                let dx = player.x - e.x, dy = player.y - e.y;
+                let len = Math.hypot(dx,dy);
+                if(len > 1){
+                    let mv = Math.min(e.speed, len-12);
+                    e.x += (dx/len)*mv;
+                    e.y += (dy/len)*mv;
+                }
+                e.x = Math.min(Math.max(e.x, e.radius), MAP_W - e.radius);
+                e.y = Math.min(Math.max(e.y, e.radius), MAP_H - e.radius);
+            }
+            if(boss && !bossDefeated){
+                let dx = player.x - boss.x, dy = player.y - boss.y;
+                let len = Math.hypot(dx,dy);
+                if(len > 1){
+                    let mv = Math.min(boss.speed, len-20);
+                    boss.x += (dx/len)*mv;
+                    boss.y += (dy/len)*mv;
+                }
+                boss.x = Math.min(Math.max(boss.x, boss.radius), MAP_W - boss.radius);
+                boss.y = Math.min(Math.max(boss.y, boss.radius), MAP_H - boss.radius);
+            }
+        }
+        
+        function checkPlayerHurt(){
+            if(player.invincible > 0){ player.invincible--; return; }
+            for(let e of enemies){
+                if(Math.hypot(player.x-e.x, player.y-e.y) < PLAYER_RADIUS + e.radius){
+                    player.hp -= 12; player.invincible = 18;
+                    if(player.hp <= 0) gameOver(false);
                     break;
                 }
             }
-            if(boss && !bossDefeated){
-                let dist = Math.hypot(player.x - boss.x, player.y - boss.y);
-                if(dist < PLAYER_RADIUS + boss.radius){
-                    player.hp -= 25;
-                    player.invincible = 18;
-                    if(player.hp <= 0){ gameActive=false; alert("被BOSS击败"); location.reload(); }
-                }
+            if(boss && !bossDefeated && Math.hypot(player.x-boss.x, player.y-boss.y) < PLAYER_RADIUS+boss.radius){
+                player.hp -= 24; player.invincible = 18;
+                if(player.hp <= 0) gameOver(false);
             }
             updateUI();
         }
         
-        // 胜利条件: 5小怪 或 boss死亡
-        function checkWin(){
+        function gameOver(isWin){
+            gameActive = false;
+            alert(isWin ? "✨ 胜利！ ✨" : "💀 被击败了 💀");
+            showLobby();
+        }
+        
+        function checkWinCondition(){
             if(!gameActive) return;
-            let win = false;
-            if(normalKills >= 5) win = true;
-            if(bossDefeated) win = true;
-            if(win){
+            if(normalKills >= 20 || bossDefeated){
                 gameActive = false;
-                winFlag = true;
-                alert("✨ 胜利！ 你已逃离噩梦森林 ✨\n点击确定重新开始");
-                location.reload();
+                gameOver(true);
             }
         }
         
-        // 普通攻击(冷却处理)
-        function normalAttack(){
+        function updateCooldowns(){
+            if(attackCd > 0) attackCd--;
+            if(ultCooldown > 0){ ultCooldown--; updateUI(); }
+        }
+        
+        function updatePlayerMove(){
             if(!gameActive) return;
-            if(ultraActive){
-                // 连发模式无冷却，直接发射
-                let angle = Math.atan2(player.y - (boss?boss.y: (enemies[0]?.y||player.y)), player.x - (boss?boss.x: (enemies[0]?.x||player.x)));
-                let targetX = player.x - Math.cos(angle)*80;
-                let targetY = player.y - Math.sin(angle)*80;
-                shoot(targetX, targetY);
-            } else {
-                if(normalCd <= 0){
-                    let angle = Math.atan2(player.y - (boss?boss.y: (enemies[0]?.y||player.y)), player.x - (boss?boss.x: (enemies[0]?.x||player.x)));
-                    let targetX = player.x - Math.cos(angle)*80;
-                    let targetY = player.y - Math.sin(angle)*80;
-                    if(shoot(targetX, targetY)){
-                        normalCd = 18; // 0.3秒 (60帧->18帧)
-                    }
+            if(useJoystick && joystickActive){
+                let len = Math.hypot(moveVec.x, moveVec.y);
+                if(len > 0.2){
+                    let step = 6.8;
+                    player.x += moveVec.x * step;
+                    player.y += moveVec.y * step;
+                }
+            } else if(mouseDragActive){
+                let dx = dragTarget.x - player.x;
+                let dy = dragTarget.y - player.y;
+                let dist = Math.hypot(dx,dy);
+                if(dist > 3){
+                    let step = Math.min(7.0, dist);
+                    player.x += (dx/dist)*step;
+                    player.y += (dy/dist)*step;
+                } else {
+                    player.x = dragTarget.x;
+                    player.y = dragTarget.y;
                 }
             }
+            player.x = Math.min(Math.max(player.x, PLAYER_RADIUS), MAP_W - PLAYER_RADIUS);
+            player.y = Math.min(Math.max(player.y, PLAYER_RADIUS), MAP_H - PLAYER_RADIUS);
         }
         
-        // 开启大招(连发)
-        function activateUltra(){
-            if(!gameActive) return;
-            ultraActive = true;
-            ultraDuration = 300; // 5秒连发
-            document.getElementById('modeStatus').innerText = "连发⚡";
-            setTimeout(()=>{
-                if(ultraActive){
-                    ultraActive = false;
-                    document.getElementById('modeStatus').innerText = "普通";
-                }
-            }, 5000);
-        }
-        
-        // 更新UI
-        function updateUI(){
-            document.getElementById('hpValue').innerText = player.hp;
-            document.getElementById('mobKill').innerText = normalKills;
-            let cdSpan = document.getElementById('cdInfo');
-            if(!ultraActive && normalCd>0){
-                cdSpan.innerText = `⏳ 普攻冷却: ${Math.ceil(normalCd/6)/10}s`;
-            } else if(ultraActive){
-                cdSpan.innerText = `🔥 连发模式 剩余 ${Math.ceil(ultraDuration/6)/10}s`;
-            } else {
-                cdSpan.innerText = `🔫 普攻冷却: 就绪`;
-            }
-        }
-        
-        // 帧更新冷却
-        function updateCooldown(){
-            if(normalCd > 0) normalCd--;
-            if(ultraActive){
-                ultraDuration--;
-                if(ultraDuration <= 0){
-                    ultraActive = false;
-                    document.getElementById('modeStatus').innerText = "普通";
-                }
-            }
-            updateUI();
-        }
-        
-        // 相机跟随玩家 (中心)
         function updateCamera(){
-            let targetX = player.x - canvas.width/2;
-            let targetY = player.y - canvas.height/2;
-            targetX = Math.min(Math.max(targetX, 0), MAP_W - canvas.width);
-            targetY = Math.min(Math.max(targetY, 0), MAP_H - canvas.height);
-            camera.x += (targetX - camera.x) * 0.12;
-            camera.y += (targetY - camera.y) * 0.12;
+            camera.x = player.x - canvas.width/2;
+            camera.y = player.y - canvas.height/2;
             camera.x = Math.min(Math.max(camera.x, 0), MAP_W - canvas.width);
             camera.y = Math.min(Math.max(camera.y, 0), MAP_H - canvas.height);
         }
         
-        // ---------- 绘图(所有视觉) ----------
-        function drawBackground(){
-            ctx.fillStyle = '#346b34';
-            ctx.fillRect(0,0,canvas.width,canvas.height);
-            for(let t of trees){
-                let sx = t.x - camera.x;
-                let sy = t.y - camera.y;
-                if(sx > -80 && sx < canvas.width+80){
-                    ctx.fillStyle = '#5c8c44';
-                    ctx.fillRect(sx-10, sy-15, 20, 30);
-                    ctx.fillStyle = '#47632c';
-                    ctx.beginPath();
-                    ctx.arc(sx, sy-18, 15, 0, Math.PI*2);
-                    ctx.fill();
-                }
-            }
+        function applyDifficulty(){
+            if(currentDifficulty === "low") hunterSpeedBase = 1.48;
+            else if(currentDifficulty === "medium") hunterSpeedBase = 2.3;
+            else hunterSpeedBase = 3.5;
+            for(let e of enemies) e.speed = e.originalSpeed = hunterSpeedBase * 0.96;
+            if(boss) boss.speed = boss.originalSpeed = hunterSpeedBase * 1.25;
         }
         
-        function drawEnemies(){
-            for(let e of enemies){
-                let sx = e.x - camera.x;
-                let sy = e.y - camera.y;
-                if(sx > -100 && sx < canvas.width+100){
-                    if(monsterReady) ctx.drawImage(monsterImg, sx-28, sy-28, 56,56);
-                    else ctx.fillStyle='#b33e3e', ctx.beginPath(), ctx.arc(sx,sy,26,0,Math.PI*2), ctx.fill();
-                    ctx.fillStyle='#fff2b0';
-                    ctx.font='bold 18px monospace';
-                    ctx.fillText(`❤️ ${e.hp}`, sx-22, sy-30);
-                }
+        function resetGameSession(){
+            player = { x: MAP_W/2, y: MAP_H/2, hp: 100, maxHp: 100, invincible: 0 };
+            enemies = [];
+            for(let i=0;i<20;i++){
+                let angle = Math.random() * Math.PI*2;
+                let rad = 500 + Math.random()*550;
+                let ex = player.x + Math.cos(angle)*rad;
+                let ey = player.y + Math.sin(angle)*rad;
+                ex = Math.min(Math.max(ex, 60), MAP_W-60);
+                ey = Math.min(Math.max(ey, 60), MAP_H-60);
+                enemies.push({ x: ex, y: ey, hp: 100, maxHp:100, radius: 30, speed: hunterSpeedBase, originalSpeed: hunterSpeedBase, type: "mob" });
             }
-            if(boss && !bossDefeated){
-                let sx = boss.x - camera.x;
-                let sy = boss.y - camera.y;
-                if(monsterReady) ctx.drawImage(monsterImg, sx-44, sy-44, 88,88);
-                else ctx.fillStyle='#8f2f6f', ctx.beginPath(), ctx.arc(sx,sy,44,0,Math.PI*2), ctx.fill();
-                ctx.fillStyle='#ffbc6e';
-                ctx.font='bold 20px monospace';
-                ctx.fillText(`👾 BOSS ${boss.hp}`, sx-44, sy-52);
-            }
+            let bx = player.x + (Math.random()>0.5? 1000 : -950);
+            let by = player.y + (Math.random()>0.5? 850 : -800);
+            bx = Math.min(Math.max(bx, 160), MAP_W-160);
+            by = Math.min(Math.max(by, 160), MAP_H-160);
+            boss = { x: bx, y: by, hp: 10000, maxHp:10000, radius: 56, speed: hunterSpeedBase*1.28, originalSpeed: hunterSpeedBase*1.28, type: "boss" };
+            bossDefeated = false;
+            normalKills = 0;
+            gameActive = true;
+            projectiles = [];
+            attackCd = 0;
+            ultCooldown = 0;
+            hitEffects = [];
+            slowMap.clear();
+            markerPoint = { x: null, y: null };
+            updateUI();
+            applyDifficulty();
+            ensureMusicPlay();
         }
         
-        function drawProjectiles(){
-            for(let p of projectiles){
-                let sx = p.x - camera.x;
-                let sy = p.y - camera.y;
-                ctx.fillStyle = '#ffec80';
-                ctx.font = 'bold 22px "KaiTi","楷体"';
-                ctx.shadowBlur = 6;
-                ctx.fillText("桂英", sx-15, sy-8);
-                ctx.shadowBlur = 0;
-            }
+        function showLobby(){
+            document.getElementById('lobbyOverlay').style.display = 'flex';
+            gameActive = false;
+            musicStarted = false;
+            if(bgmAudio) bgmAudio.pause();
+        }
+        function hideLobby(){
+            document.getElementById('lobbyOverlay').style.display = 'none';
+            resetGameSession();
         }
         
-        function drawPlayer(){
-            let sx = player.x - camera.x;
-            let sy = player.y - camera.y;
-            ctx.font = '52px "Segoe UI Emoji"';
-            ctx.fillStyle = '#ffffb0';
-            ctx.fillText("🙂", sx-24, sy+16);
-            ctx.font = 'bold 22px system-ui';
-            ctx.fillStyle = '#fcd15a';
-            ctx.fillText("⚔️", sx-12, sy-18);
-            // 血条
-            let percent = player.hp/player.maxHp;
-            ctx.fillStyle = '#aa2222';
-            ctx.fillRect(sx-30, sy-42, 60, 8);
-            ctx.fillStyle = '#44ff44';
-            ctx.fillRect(sx-30, sy-42, 60*percent, 8);
-        }
-        
-        // 小地图 (单击缩放, 自动标记)
+        // ---------- 小地图绘制 (完整显示所有物体、门、标记+引导线) ----------
         function drawMinimap(){
             const w = minimapCanvas.width, h = minimapCanvas.height;
             mmCtx.clearRect(0,0,w,h);
@@ -566,178 +658,266 @@
             mmCtx.fillRect(0,0,w,h);
             let zoom = minimapZoom;
             let centerX = w/2, centerY = h/2;
-            let trans = (wx,wy) => {
-                let rx = (wx - MAP_W/2) * zoom + centerX;
-                let ry = (wy - MAP_H/2) * zoom + centerY;
-                return {x: rx, y: ry};
+            let trans = (wx, wy) => {
+                let rx = (wx - player.x) * zoom + centerX;
+                let ry = (wy - player.y) * zoom + centerY;
+                return { x: rx, y: ry };
             };
-            // 树木灰点
-            mmCtx.fillStyle = '#7fa86a';
+            // 树木
+            mmCtx.fillStyle = '#a6d98c';
             for(let t of trees){
-                let p = trans(t.x,t.y);
-                if(p.x>0 && p.x<w && p.y>0 && p.y<h) mmCtx.fillRect(p.x-1.5,p.y-1.5,3,3);
+                let p = trans(t.x, t.y);
+                if(p.x>0 && p.x<w && p.y>0 && p.y<h) mmCtx.fillRect(p.x-2, p.y-2, 4,4);
             }
-            // 小怪红点
+            // 小怪
             for(let e of enemies){
-                let p = trans(e.x,e.y);
-                mmCtx.beginPath();
-                mmCtx.fillStyle = '#e34234';
-                mmCtx.arc(p.x,p.y,5,0,Math.PI*2);
-                mmCtx.fill();
+                let p = trans(e.x, e.y);
+                mmCtx.fillStyle = '#e3873e';
+                mmCtx.beginPath(); mmCtx.arc(p.x,p.y,5,0,Math.PI*2); mmCtx.fill();
             }
+            // BOSS
             if(boss && !bossDefeated){
-                let p = trans(boss.x,boss.y);
-                mmCtx.fillStyle = '#bf4c8f';
-                mmCtx.beginPath();
-                mmCtx.arc(p.x,p.y,8,0,Math.PI*2);
-                mmCtx.fill();
-                mmCtx.fillStyle = 'white';
-                mmCtx.font = 'bold 14px monospace';
-                mmCtx.fillText("⚠️", p.x-6, p.y+4);
+                let p = trans(boss.x, boss.y);
+                mmCtx.fillStyle = '#c05aa0';
+                mmCtx.beginPath(); mmCtx.arc(p.x,p.y,9,0,Math.PI*2); mmCtx.fill();
+                mmCtx.fillStyle = 'white'; mmCtx.font='bold 14px monospace'; mmCtx.fillText("B", p.x-5, p.y+5);
             }
-            // 玩家绿三角
-            let pp = trans(player.x,player.y);
+            // 门？ 其实游戏没有门，但设置一个虚拟标记点当作“胜利信标”
+            // 展示用户自定义标记
+            if(markerPoint.x !== null && markerPoint.y !== null){
+                let p = trans(markerPoint.x, markerPoint.y);
+                mmCtx.fillStyle = '#66ccff';
+                mmCtx.beginPath(); mmCtx.arc(p.x, p.y, 7, 0, Math.PI*2); mmCtx.fill();
+                mmCtx.fillStyle = '#ffffff'; mmCtx.font='bold 12px monospace'; mmCtx.fillText("📍", p.x-6, p.y+4);
+                // 画引导线 (玩家到标记)
+                let playerPix = trans(player.x, player.y);
+                mmCtx.beginPath();
+                mmCtx.moveTo(playerPix.x, playerPix.y);
+                mmCtx.lineTo(p.x, p.y);
+                mmCtx.strokeStyle = '#66ff99';
+                mmCtx.lineWidth = 2;
+                mmCtx.setLineDash([5, 5]);
+                mmCtx.stroke();
+                mmCtx.setLineDash([]);
+            }
+            // 玩家自身
+            let pp = trans(player.x, player.y);
             mmCtx.fillStyle = '#55ff77';
-            mmCtx.beginPath();
-            mmCtx.moveTo(pp.x, pp.y-8);
-            mmCtx.lineTo(pp.x-6, pp.y+4);
-            mmCtx.lineTo(pp.x+6, pp.y+4);
-            mmCtx.fill();
+            mmCtx.beginPath(); mmCtx.moveTo(pp.x, pp.y-8); mmCtx.lineTo(pp.x-6, pp.y+4); mmCtx.lineTo(pp.x+6, pp.y+4); mmCtx.fill();
             // 视野框
-            let tl = trans(camera.x, camera.y);
-            let br = trans(camera.x+canvas.width, camera.y+canvas.height);
+            let v1 = trans(camera.x, camera.y);
+            let v2 = trans(camera.x+canvas.width, camera.y+canvas.height);
             mmCtx.strokeStyle = '#ffdd99';
             mmCtx.lineWidth = 1.5;
-            mmCtx.strokeRect(tl.x, tl.y, br.x-tl.x, br.y-tl.y);
+            mmCtx.strokeRect(v1.x, v1.y, v2.x-v1.x, v2.y-v1.y);
         }
         
-        // 缩放小地图点击事件
-        function toggleMinimapZoom(){
-            minimapZoom = (minimapZoom === 1.0) ? 1.8 : 1.0;
+        // 小地图交互：点击设置标记点 (世界坐标)
+        function onMinimapClick(e){
+            const rect = minimapCanvas.getBoundingClientRect();
+            const scaleX = minimapCanvas.width / rect.width;
+            const scaleY = minimapCanvas.height / rect.height;
+            let clientX, clientY;
+            if(e.touches){
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            let canvasX = (clientX - rect.left) * scaleX;
+            let canvasY = (clientY - rect.top) * scaleY;
+            let zoom = minimapZoom;
+            let centerX = minimapCanvas.width/2, centerY = minimapCanvas.height/2;
+            let worldX = (canvasX - centerX) / zoom + player.x;
+            let worldY = (canvasY - centerY) / zoom + player.y;
+            worldX = Math.min(Math.max(worldX, 0), MAP_W);
+            worldY = Math.min(Math.max(worldY, 0), MAP_H);
+            markerPoint = { x: worldX, y: worldY };
+            drawMinimap();
+            e.stopPropagation();
+        }
+        
+        function toggleMinimap(){
+            minimapWrap.classList.toggle('full');
+            if(minimapWrap.classList.contains('full')) minimapZoom = 1.3;
+            else minimapZoom = 1.0;
             drawMinimap();
         }
         
-        // 画布自适应
+        // 摇杆逻辑
+        function initJoystick(){
+            let container = document.getElementById('joystickContainer');
+            let thumb = joystickThumb;
+            let active = false;
+            container.addEventListener('touchstart', (e)=>{
+                e.preventDefault();
+                let rect = container.getBoundingClientRect();
+                joystickCenter.x = rect.left + rect.width/2;
+                joystickCenter.y = rect.top + rect.height/2;
+                active = true;
+                joystickActive = true;
+                useJoystick = true;
+                moveVec = { x:0, y:0 };
+                thumb.style.transform = `translate(-50%, -50%)`;
+            });
+            window.addEventListener('touchmove', (e)=>{
+                if(!active) return;
+                let touch = e.touches[0];
+                let dx = touch.clientX - joystickCenter.x;
+                let dy = touch.clientY - joystickCenter.y;
+                let len = Math.hypot(dx,dy);
+                let maxR = 45;
+                if(len > maxR){ dx = dx/len*maxR; dy = dy/len*maxR; }
+                moveVec.x = dx / 35;
+                moveVec.y = dy / 35;
+                if(Math.abs(moveVec.x)>1) moveVec.x = moveVec.x/Math.abs(moveVec.x);
+                if(Math.abs(moveVec.y)>1) moveVec.y = moveVec.y/Math.abs(moveVec.y);
+                thumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+                e.preventDefault();
+            });
+            window.addEventListener('touchend', ()=>{
+                active = false;
+                joystickActive = false;
+                moveVec = { x:0, y:0 };
+                thumb.style.transform = `translate(-50%, -50%)`;
+            });
+        }
+        
+        // 鼠标移动/拖拽
+        function getCanvasCoord(e){
+            let rect = canvas.getBoundingClientRect();
+            let sx = canvas.width/rect.width, sy = canvas.height/rect.height;
+            let cx = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+            let cy = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+            return { x: (cx - rect.left)*sx, y: (cy - rect.top)*sy };
+        }
+        function onDragStart(e){
+            let coord = getCanvasCoord(e);
+            dragTarget = { x: coord.x + camera.x, y: coord.y + camera.y };
+            mouseDragActive = true;
+            useJoystick = false;
+        }
+        function onDragMove(e){
+            if(!mouseDragActive) return;
+            let coord = getCanvasCoord(e);
+            dragTarget = { x: coord.x + camera.x, y: coord.y + camera.y };
+        }
+        function onDragEnd(){ mouseDragActive = false; }
+        function onMouseMove(e){
+            let coord = getCanvasCoord(e);
+            let worldX = coord.x + camera.x, worldY = coord.y + camera.y;
+            let dx = worldX - player.x, dy = worldY - player.y;
+            let len = Math.hypot(dx,dy);
+            if(len > 0.01){ aimDir.x = dx/len; aimDir.y = dy/len; }
+        }
+        
+        // 绘图辅助
+        function drawBackground(){
+            ctx.fillStyle = '#346b34';
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+            for(let t of trees){
+                let sx = t.x - camera.x, sy = t.y - camera.y;
+                if(sx > -80 && sx < canvas.width+80){
+                    ctx.fillStyle = '#5c8c44';
+                    ctx.fillRect(sx-10, sy-15, 20, 30);
+                    ctx.fillStyle = '#47632c';
+                    ctx.beginPath(); ctx.arc(sx, sy-18, 14, 0, Math.PI*2); ctx.fill();
+                }
+            }
+        }
+        function drawEnemies(){
+            for(let e of enemies){
+                let sx = e.x - camera.x, sy = e.y - camera.y;
+                if(mobReady) ctx.drawImage(mobImage, sx-28, sy-28, 56,56);
+                else ctx.fillStyle='#b33e3e', ctx.beginPath(), ctx.arc(sx,sy,26,0,Math.PI*2), ctx.fill();
+                ctx.fillStyle='#fff2b0'; ctx.font='bold 16px monospace';
+                ctx.fillText(`❤️ ${e.hp}`, sx-22, sy-34);
+                if(hitEffects.some(h=>h.entity===e)) ctx.fillText("😍", sx-18, sy-52);
+            }
+            if(boss && !bossDefeated){
+                let sx = boss.x - camera.x, sy = boss.y - camera.y;
+                if(bossReady) ctx.drawImage(bossImage, sx-48, sy-48, 96,96);
+                else ctx.fillStyle='#8f2f6f', ctx.beginPath(), ctx.arc(sx,sy,44,0,Math.PI*2), ctx.fill();
+                ctx.fillStyle='#ffbc6e'; ctx.font='bold 22px monospace';
+                ctx.fillText(`💀 ${boss.hp}`, sx-50, sy-62);
+                if(hitEffects.some(h=>h.entity===boss)) ctx.fillText("😍", sx-28, sy-78);
+            }
+        }
+        function drawProjectiles(){
+            for(let p of projectiles){
+                let sx = p.x - camera.x, sy = p.y - camera.y;
+                ctx.fillStyle = '#ffec80'; ctx.font = 'bold 24px "KaiTi"'; ctx.fillText("桂英", sx-18, sy-8);
+            }
+        }
+        function drawPlayer(){
+            let sx = player.x - camera.x, sy = player.y - camera.y;
+            ctx.font = '52px "Segoe UI Emoji"'; ctx.fillStyle = '#ffffb0'; ctx.fillText("🙂", sx-24, sy+16);
+            let arrowX = sx + aimDir.x * 45, arrowY = sy + aimDir.y * 45;
+            ctx.beginPath(); ctx.moveTo(arrowX, arrowY); ctx.lineTo(arrowX-8, arrowY-5); ctx.lineTo(arrowX-8, arrowY+5);
+            ctx.fillStyle = '#ffdd77'; ctx.fill();
+            let percent = player.hp/player.maxHp;
+            ctx.fillStyle = '#aa2222'; ctx.fillRect(sx-30, sy-42, 60, 8);
+            ctx.fillStyle = '#44ff44'; ctx.fillRect(sx-30, sy-42, 60*percent, 8);
+        }
+        function drawAll(){ drawBackground(); drawEnemies(); drawProjectiles(); drawPlayer(); drawMinimap(); }
+        
         function resizeCanvas(){
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             drawAll();
         }
         
-        function drawAll(){
-            if(!ctx) return;
-            drawBackground();
-            drawEnemies();
-            drawProjectiles();
-            drawPlayer();
-            drawMinimap();
-        }
-        
-        // 游戏循环
-        let lastTimestamp = 0;
+        // 主循环
         function gameUpdate(){
             if(gameActive){
                 updateEnemies();
                 updateProjectiles();
                 checkPlayerHurt();
-                updateCooldown();
+                updateCooldowns();
+                updatePlayerMove();
+                updateDebuffs();
                 updateCamera();
-                checkWin();
+                checkWinCondition();
                 drawAll();
-            } else {
-                drawAll();
-            }
+            } else drawAll();
             requestAnimationFrame(gameUpdate);
         }
         
-        // 自动索敌攻击辅助(用于按钮)
-        function attackWrapper(){
-            if(!gameActive) return;
-            normalAttack();
-        }
-        
-        // 事件绑定 + 移动摇杆模拟 (点击拖拽移动玩家)
-        let isMoving = false;
-        let moveTarget = {x: player.x, y: player.y};
-        
-        function getCanvasCoord(e){
-            let rect = canvas.getBoundingClientRect();
-            let scaleX = canvas.width / rect.width;
-            let scaleY = canvas.height / rect.height;
-            let cx, cy;
-            if(e.touches){
-                cx = e.touches[0].clientX;
-                cy = e.touches[0].clientY;
-            } else {
-                cx = e.clientX;
-                cy = e.clientY;
-            }
-            let canvasX = (cx - rect.left) * scaleX;
-            let canvasY = (cy - rect.top) * scaleY;
-            return {x: Math.min(Math.max(canvasX,0), canvas.width), y: Math.min(Math.max(canvasY,0), canvas.height)};
-        }
-        
-        function onPointerDown(e){
-            e.preventDefault();
-            let coord = getCanvasCoord(e);
-            let worldX = coord.x + camera.x;
-            let worldY = coord.y + camera.y;
-            moveTarget = {x: worldX, y: worldY};
-            isMoving = true;
-        }
-        function onPointerMove(e){
-            if(!isMoving) return;
-            let coord = getCanvasCoord(e);
-            let worldX = coord.x + camera.x;
-            let worldY = coord.y + camera.y;
-            moveTarget = {x: worldX, y: worldY};
-        }
-        function onPointerUp(){
-            isMoving = false;
-        }
-        function updatePlayerMove(){
-            if(!gameActive) return;
-            if(isMoving){
-                let dx = moveTarget.x - player.x;
-                let dy = moveTarget.y - player.y;
-                let len = Math.hypot(dx,dy);
-                let step = 7.2;
-                if(len < step){
-                    player.x = moveTarget.x;
-                    player.y = moveTarget.y;
-                } else {
-                    player.x += (dx/len)*step;
-                    player.y += (dy/len)*step;
-                }
-                player.x = Math.min(Math.max(player.x, PLAYER_RADIUS), MAP_W - PLAYER_RADIUS);
-                player.y = Math.min(Math.max(player.y, PLAYER_RADIUS), MAP_H - PLAYER_RADIUS);
-            }
-        }
-        
-        // 主动帧移动
-        function movementLoop(){
-            updatePlayerMove();
-            requestAnimationFrame(movementLoop);
-        }
-        
-        // 启动
+        // 事件绑定
         window.addEventListener('resize', ()=>{ resizeCanvas(); drawMinimap(); });
-        document.getElementById('attackBtn').addEventListener('click', attackWrapper);
-        document.getElementById('ultraBtn').addEventListener('click', ()=>{ if(gameActive) activateUltra(); });
-        document.getElementById('minimapWrap').addEventListener('click', toggleMinimapZoom);
+        document.getElementById('attackBtn').addEventListener('click', ()=>normalAttack());
+        document.getElementById('ultraBtn').addEventListener('click', ()=>castUltimate());
+        minimapWrap.addEventListener('click', (e)=>{ if(e.target === minimapCanvas || e.target.closest('#minimapCanvas')) onMinimapClick(e); else toggleMinimap(); });
+        window.addEventListener('keydown', (e)=>{
+            if(e.key === 'm' || e.key === 'M') toggleMinimap();
+            if(e.key === 'e' || e.key === 'E'){ e.preventDefault(); normalAttack(); }
+            if(e.key === 'q' || e.key === 'Q'){ e.preventDefault(); castUltimate(); }
+        });
+        canvas.addEventListener('mousemove', onMouseMove);
+        canvas.addEventListener('mousedown', onDragStart);
+        window.addEventListener('mousemove', onDragMove);
+        window.addEventListener('mouseup', onDragEnd);
+        canvas.addEventListener('touchstart', (e)=>{ onMouseMove(e.touches[0]); onDragStart(e); });
         
-        canvas.addEventListener('mousedown', onPointerDown);
-        window.addEventListener('mousemove', onPointerMove);
-        window.addEventListener('mouseup', onPointerUp);
-        canvas.addEventListener('touchstart', onPointerDown, {passive:false});
-        window.addEventListener('touchmove', onPointerMove, {passive:false});
-        window.addEventListener('touchend', onPointerUp);
-        
-        initWorld();
+        for(let i=0;i<TREE_COUNT;i++) trees.push({ x: 100+Math.random()*(MAP_W-200), y: 100+Math.random()*(MAP_H-200) });
+        initJoystick();
         resizeCanvas();
+        showLobby();
+        
+        document.getElementById('startGameBtn').onclick = ()=>{ hideLobby(); };
+        document.getElementById('exitGameBtn').onclick = ()=>{ if(confirm("退出游戏？")) window.close?.(); alert("手动关闭页面"); };
+        document.querySelectorAll('.diff-btn').forEach(btn=>{
+            btn.onclick = ()=>{
+                document.querySelectorAll('.diff-btn').forEach(b=>b.classList.remove('active'));
+                btn.classList.add('active');
+                if(btn.dataset.diff === "low") currentDifficulty = "low";
+                else if(btn.dataset.diff === "medium") currentDifficulty = "medium";
+                else currentDifficulty = "high";
+                if(!document.getElementById('lobbyOverlay').style.display.includes('flex')) applyDifficulty();
+            };
+        });
         gameUpdate();
-        movementLoop();
-        setInterval(()=>{ if(gameActive) drawMinimap(); }, 100);
     })();
 </script>
 </body>
