@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>大逃杀·狩灵神殿 | 全功能小地图</title>
+    <title>狩灵神殿·大逃杀 | 钥匙&门机制</title>
     <style>
         * {
             user-select: none;
@@ -31,21 +31,20 @@
             background: #2a5e2a;
             cursor: crosshair;
         }
-        /* 小地图：可点击缩放 + 全屏弹窗模式 */
+        /* 全图小地图 */
         .minimap-wrapper {
             position: fixed;
             top: 15px;
             right: 15px;
-            width: 160px;
-            height: 160px;
+            width: 200px;
+            height: 200px;
             border-radius: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(10px);
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
             border: 2px solid #ffd966;
             z-index: 30;
             overflow: hidden;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
-            transition: 0.1s ease;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
         }
         .minimap-wrapper.full {
             position: fixed;
@@ -54,9 +53,9 @@
             transform: translate(-50%, -50%);
             width: 85vw;
             height: 85vw;
-            max-width: 450px;
-            max-height: 450px;
-            border-radius: 32px;
+            max-width: 550px;
+            max-height: 550px;
+            border-radius: 28px;
             z-index: 200;
             border: 3px solid #ffaa44;
         }
@@ -65,6 +64,7 @@
             height: 100%;
             display: block;
             cursor: pointer;
+            background-color: #2d4827;
         }
         .minimap-label {
             position: absolute;
@@ -77,7 +77,6 @@
             padding: 1px 6px;
             pointer-events: none;
         }
-        /* UI面板 */
         .hp-bar {
             position: fixed;
             top: 15px;
@@ -106,6 +105,19 @@
             font-size: 13px;
             white-space: nowrap;
             z-index: 30;
+        }
+        .key-status {
+            position: fixed;
+            top: 60px;
+            left: 15px;
+            background: #000000aa;
+            backdrop-filter: blur(6px);
+            padding: 4px 12px;
+            border-radius: 40px;
+            font-size: 12px;
+            color: #ffcc88;
+            z-index: 30;
+            font-weight: bold;
         }
         .ult-bar {
             position: fixed;
@@ -136,7 +148,6 @@
             border-radius: 20px;
             z-index: 46;
         }
-        /* 摇杆 */
         .joystick-container {
             position: fixed;
             bottom: 30px;
@@ -149,12 +160,6 @@
             border: 2px solid #ffd966aa;
             z-index: 50;
             touch-action: none;
-        }
-        .joystick-base {
-            width: 100%;
-            height: 100%;
-            border-radius: 100%;
-            position: relative;
         }
         .joystick-thumb {
             position: absolute;
@@ -192,7 +197,6 @@
             box-shadow: 0 5px 0 #b47c00;
             transition: 0.05s linear;
             cursor: pointer;
-            touch-action: manipulation;
         }
         .action-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #b47c00; }
         .skill-btn { background: #6a4eff; color: white; box-shadow: 0 5px 0 #2f1c8a; }
@@ -210,11 +214,10 @@
         }
         @media (max-width: 700px) {
             .action-btn { width: 55px; height: 55px; font-size: 24px; }
-            .joystick-container { width: 110px; height: 110px; bottom: 20px; left: 20px; }
-            .joystick-thumb { width: 45px; height: 45px; }
-            .minimap-wrapper { width: 125px; height: 125px; }
+            .joystick-container { width: 110px; height: 110px; }
+            .minimap-wrapper { width: 140px; height: 140px; }
+            .key-status { font-size: 10px; top: 55px; }
         }
-        /* 大厅菜单 */
         .menu-overlay {
             position: fixed;
             inset: 0;
@@ -271,25 +274,24 @@
 
 <div class="minimap-wrapper" id="minimapWrapper">
     <canvas id="minimapCanvas" width="300" height="300"></canvas>
-    <div class="minimap-label">🗺️ 点击缩放/标记 | 绿线指向标记点</div>
+    <div class="minimap-label">🗺️ 全图雷达 | 点击缩放/标记</div>
 </div>
 
 <div class="hp-bar">❤️ <span id="hpValue">100</span> / 100</div>
-<div class="quest-info">🏆 胜利: 小怪(<span id="mobKill">0</span>/20) 或 击杀BOSS(10000血)</div>
+<div class="quest-info">🏆 胜利条件: 击杀小怪(<span id="mobKill">0</span>/20) 获得钥匙 → 触碰光门</div>
+<div class="key-status" id="keyStatus">🔑 钥匙: 未获得</div>
 <div class="ult-bar"><div class="ult-fill" id="ultFill"></div></div>
 <div class="ult-text" id="ultLabel">✨ 大招就绪</div>
 
 <div class="joystick-container" id="joystickContainer">
-    <div class="joystick-base" id="joystickBase">
-        <div class="joystick-thumb" id="joystickThumb"></div>
-    </div>
+    <div class="joystick-thumb" id="joystickThumb"></div>
 </div>
 
 <div class="btn-group">
     <button class="action-btn" id="attackBtn">🗡️</button>
     <button class="action-btn skill-btn" id="ultraBtn">✨</button>
 </div>
-<div class="pc-hint">🖱️ PC: 鼠标瞄准 | E/Q 攻击/大招 | M 地图 | 地图点击标记</div>
+<div class="pc-hint">🖱️ 鼠标瞄准 | E/Q攻击/大招 | M 地图 | 地图点击标记</div>
 
 <div id="lobbyOverlay" class="menu-overlay">
     <div class="menu-card">
@@ -304,11 +306,11 @@
             <button data-diff="medium" class="diff-btn">⚡ 中</button>
             <button data-diff="high" class="diff-btn">🔥 高</button>
         </div>
-        <p style="font-size: 11px; margin-top: 18px;">👆 摇杆移动 | 击杀20小怪或万血BOSS</p>
+        <p style="font-size: 11px; margin-top: 18px;">👆 左摇杆移动 | 击败20小怪获得钥匙 → 触碰光门</p>
     </div>
 </div>
 
-<!-- 背景音乐 (确保播放) -->
+<!-- 网易云音乐ID:365223550 (需要用户交互才能播放) -->
 <audio id="bgmAudio" loop preload="auto" style="display:none;">
     <source src="https://music.163.com/song/media/outer/url?id=365223550.mp3" type="audio/mpeg">
 </audio>
@@ -316,8 +318,8 @@
 <script>
     (function(){
         // ---------- 世界配置 ----------
-        const MAP_W = 3800;
-        const MAP_H = 3000;
+        const MAP_W = 4200;
+        const MAP_H = 3400;
         const PLAYER_RADIUS = 32;
         let player = { x: MAP_W/2, y: MAP_H/2, hp: 100, maxHp: 100, invincible: 0 };
         let enemies = [];
@@ -326,18 +328,21 @@
         let normalKills = 0;
         let bossDefeated = false;
         let gameActive = true;
+        let hasKey = false;          // 击杀20小怪获得钥匙
+        let door = { x: 0, y: 0 };   // 门的位置（获得钥匙后显示）
+        let doorVisible = false;
         let currentDifficulty = "medium";
         let hunterSpeedBase = 2.2;
         
         let attackCd = 0;
         let ultCooldown = 0;
-        const ULT_MAX_CD = 1800;  // 30秒
+        const ULT_MAX_CD = 1800;
         
         let aimDir = { x: 1, y: 0 };
         let hitEffects = [];
         let slowMap = new Map();
         
-        // 小地图标记点 (点击设置)
+        // 小地图标记
         let markerPoint = { x: null, y: null };
         
         // 图片资源
@@ -357,17 +362,15 @@
         let ctx = canvas.getContext('2d');
         let camera = { x: 0, y: 0 };
         
-        // 小地图
-        let minimapZoom = 1.0;
         let minimapCanvas = document.getElementById('minimapCanvas');
         let mmCtx = minimapCanvas.getContext('2d');
         let minimapWrap = document.getElementById('minimapWrapper');
         let trees = [];
-        const TREE_COUNT = 80;
+        const TREE_COUNT = 95;
         
-        // UI组件
         const hpSpan = document.getElementById('hpValue');
         const killSpan = document.getElementById('mobKill');
+        const keyStatusSpan = document.getElementById('keyStatus');
         const ultFill = document.getElementById('ultFill');
         const ultLabel = document.getElementById('ultLabel');
         
@@ -377,45 +380,42 @@
         let useJoystick = true;
         let mouseDragActive = false;
         let dragTarget = { x: player.x, y: player.y };
-        
-        // 摇杆元素
-        const joystickThumb = document.getElementById('joystickThumb');
+        let joystickThumb = document.getElementById('joystickThumb');
         let joystickCenter = { x:0, y:0 };
-        let joystickRad = 45;
         
-        // 背景音乐 (确保交互后播放)
+        // 音乐（需要手动交互启动）
         let bgmAudio = document.getElementById('bgmAudio');
         let musicStarted = false;
-        
-        function ensureMusicPlay() {
-            if(!musicStarted && gameActive) {
+        function requestMusicPlay() {
+            if(!musicStarted) {
                 musicStarted = true;
-                bgmAudio.play().catch(e=>{
-                    console.log("音乐自动播放失败，等待用户交互");
-                    document.body.addEventListener('click', function once(){
-                        if(gameActive && !musicStarted) {
-                            bgmAudio.play();
-                            musicStarted = true;
-                        }
-                        document.body.removeEventListener('click', once);
-                    }, { once: true });
-                });
+                bgmAudio.play().catch(e=>console.log("音频自动播放受限，已由用户交互激活"));
             }
         }
+        function bindMusicToUser() {
+            const events = ['click', 'touchstart', 'keydown'];
+            events.forEach(ev => {
+                window.addEventListener(ev, function once() {
+                    requestMusicPlay();
+                    events.forEach(e => window.removeEventListener(e, once));
+                }, { once: true });
+            });
+        }
         
-        // ---------- 核心游戏逻辑 ----------
+        // ---------- 核心逻辑 ----------
         function updateUI(){
             hpSpan.innerText = player.hp;
             killSpan.innerText = normalKills;
+            if(hasKey) keyStatusSpan.innerHTML = "🔑 钥匙: 已获得 (触碰光门逃生)";
+            else keyStatusSpan.innerHTML = `🔑 钥匙: 未获得 (${normalKills}/20)`;
             let percent = (ultCooldown / ULT_MAX_CD) * 100;
             ultFill.style.width = (100 - percent) + "%";
             ultLabel.innerText = ultCooldown > 0 ? `⏳ 大招冷却 ${Math.ceil(ultCooldown/60)/10}s` : `✨ 大招就绪`;
         }
         
         function applySlow(enemy){
-            if(slowMap.has(enemy)){
-                slowMap.get(enemy).timer = 50;
-            } else {
+            if(slowMap.has(enemy)) slowMap.get(enemy).timer = 50;
+            else {
                 let original = enemy.speed;
                 slowMap.set(enemy, { originalSpeed: original, timer: 50 });
                 enemy.speed = original * 0.65;
@@ -425,108 +425,77 @@
         
         function updateDebuffs(){
             for(let [en, data] of slowMap.entries()){
-                if(!en || en.hp <= 0 || (en.type === "boss" && bossDefeated)){
-                    slowMap.delete(en);
-                    continue;
-                }
+                if(!en || en.hp <= 0 || (en.type === "boss" && bossDefeated)) { slowMap.delete(en); continue; }
                 data.timer--;
-                if(data.timer <= 0){
-                    en.speed = data.originalSpeed;
-                    slowMap.delete(en);
-                }
+                if(data.timer <= 0){ en.speed = data.originalSpeed; slowMap.delete(en); }
             }
-            for(let i=0;i<hitEffects.length;i++){
-                hitEffects[i].timer--;
-                if(hitEffects[i].timer <= 0) hitEffects.splice(i,1), i--;
-            }
+            for(let i=0;i<hitEffects.length;i++){ hitEffects[i].timer--; if(hitEffects[i].timer <= 0) hitEffects.splice(i,1), i--; }
         }
         
         function shootTowards(){
             if(!gameActive) return false;
-            let closest = null;
-            let minDist = 700;
-            if(boss && !bossDefeated){
-                let db = Math.hypot(boss.x - player.x, boss.y - player.y);
-                if(db < minDist){ minDist = db; closest = boss; }
-            }
-            for(let e of enemies){
-                let d = Math.hypot(e.x - player.x, e.y - player.y);
-                if(d < minDist){ minDist = d; closest = e; }
-            }
+            let closest = null, minDist = 700;
+            if(boss && !bossDefeated){ let db = Math.hypot(boss.x - player.x, boss.y - player.y); if(db < minDist){ minDist = db; closest = boss; } }
+            for(let e of enemies){ let d = Math.hypot(e.x - player.x, e.y - player.y); if(d < minDist){ minDist = d; closest = e; } }
             if(!closest) return false;
-            projectiles.push({
-                x: player.x, y: player.y, target: closest,
-                damage: 25, speed: 14
-            });
+            projectiles.push({ x: player.x, y: player.y, target: closest, damage: 25, speed: 14 });
             return true;
         }
         
-        function normalAttack(){
-            if(!gameActive) return;
-            if(attackCd > 0) return;
-            if(shootTowards()) attackCd = 18;
-        }
-        
+        function normalAttack(){ if(!gameActive || attackCd > 0) return; if(shootTowards()) attackCd = 18; }
         function castUltimate(){
-            if(!gameActive) return;
-            if(ultCooldown > 0) return;
-            ultCooldown = ULT_MAX_CD;
-            updateUI();
+            if(!gameActive || ultCooldown > 0) return;
+            ultCooldown = ULT_MAX_CD; updateUI();
             for(let i=0;i<6;i++) setTimeout(()=>{ if(gameActive) shootTowards(); }, i*90);
         }
         
         function updateProjectiles(){
             for(let i=0;i<projectiles.length;i++){
                 let p = projectiles[i];
-                if(!p.target || p.target.hp <= 0 || (p.target.type==="boss" && bossDefeated)){
-                    projectiles.splice(i,1); i--; continue;
-                }
-                let dx = p.target.x - p.x;
-                let dy = p.target.y - p.y;
-                let len = Math.hypot(dx,dy);
+                if(!p.target || p.target.hp <= 0 || (p.target.type==="boss" && bossDefeated)){ projectiles.splice(i,1); i--; continue; }
+                let dx = p.target.x - p.x, dy = p.target.y - p.y, len = Math.hypot(dx,dy);
                 if(len < 18){
-                    p.target.hp -= p.damage;
-                    applySlow(p.target);
+                    p.target.hp -= p.damage; applySlow(p.target);
                     if(p.target.hp <= 0){
-                        if(p.target.type === "mob"){
-                            normalKills++;
-                            let idx = enemies.indexOf(p.target);
-                            if(idx !== -1) enemies.splice(idx,1);
-                        } else if(p.target.type === "boss"){
-                            bossDefeated = true;
-                            boss = null;
+                        if(p.target.type === "mob"){ normalKills++; 
+                            let idx = enemies.indexOf(p.target); if(idx !== -1) enemies.splice(idx,1);
+                            if(normalKills >= 20 && !hasKey){
+                                hasKey = true;
+                                doorVisible = true;
+                                // 门随机生成在离玩家较远位置
+                                let angle = Math.random() * Math.PI*2;
+                                let rad = 900 + Math.random()*700;
+                                door.x = player.x + Math.cos(angle)*rad;
+                                door.y = player.y + Math.sin(angle)*rad;
+                                door.x = Math.min(Math.max(door.x, 100), MAP_W-100);
+                                door.y = Math.min(Math.max(door.y, 100), MAP_H-100);
+                            }
+                        }
+                        else if(p.target.type === "boss"){ bossDefeated = true; boss = null; hasKey = true; doorVisible = true;
+                            let angle = Math.random() * Math.PI*2;
+                            let rad = 900 + Math.random()*700;
+                            door.x = player.x + Math.cos(angle)*rad;
+                            door.y = player.y + Math.sin(angle)*rad;
+                            door.x = Math.min(Math.max(door.x, 100), MAP_W-100);
+                            door.y = Math.min(Math.max(door.y, 100), MAP_H-100);
                         }
                         updateUI();
                     }
                     projectiles.splice(i,1); i--;
-                } else {
-                    let step = Math.min(p.speed, len);
-                    p.x += (dx/len)*step;
-                    p.y += (dy/len)*step;
-                }
+                } else { let step = Math.min(p.speed, len); p.x += (dx/len)*step; p.y += (dy/len)*step; }
             }
         }
         
         function updateEnemies(){
             for(let e of enemies){
-                let dx = player.x - e.x, dy = player.y - e.y;
-                let len = Math.hypot(dx,dy);
-                if(len > 1){
-                    let mv = Math.min(e.speed, len-12);
-                    e.x += (dx/len)*mv;
-                    e.y += (dy/len)*mv;
-                }
+                let dx = player.x - e.x, dy = player.y - e.y, len = Math.hypot(dx,dy);
+                if(len > 1){ let mv = Math.min(e.speed, len-12); e.x += (dx/len)*mv; e.y += (dy/len)*mv; }
                 e.x = Math.min(Math.max(e.x, e.radius), MAP_W - e.radius);
                 e.y = Math.min(Math.max(e.y, e.radius), MAP_H - e.radius);
             }
             if(boss && !bossDefeated){
-                let dx = player.x - boss.x, dy = player.y - boss.y;
-                let len = Math.hypot(dx,dy);
-                if(len > 1){
-                    let mv = Math.min(boss.speed, len-20);
-                    boss.x += (dx/len)*mv;
-                    boss.y += (dy/len)*mv;
-                }
+                let dx = player.x - boss.x, dy = player.y - boss.y, len = Math.hypot(dx,dy);
+                if(len > 1){ let mv = Math.min(boss.speed, len-20); boss.x += (dx/len)*mv; boss.y += (dy/len)*mv; }
                 boss.x = Math.min(Math.max(boss.x, boss.radius), MAP_W - boss.radius);
                 boss.y = Math.min(Math.max(boss.y, boss.radius), MAP_H - boss.radius);
             }
@@ -535,59 +504,37 @@
         function checkPlayerHurt(){
             if(player.invincible > 0){ player.invincible--; return; }
             for(let e of enemies){
-                if(Math.hypot(player.x-e.x, player.y-e.y) < PLAYER_RADIUS + e.radius){
-                    player.hp -= 12; player.invincible = 18;
-                    if(player.hp <= 0) gameOver(false);
-                    break;
-                }
+                if(Math.hypot(player.x-e.x, player.y-e.y) < PLAYER_RADIUS + e.radius){ player.hp -= 12; player.invincible = 18; if(player.hp <= 0) gameOver(false); break; }
             }
-            if(boss && !bossDefeated && Math.hypot(player.x-boss.x, player.y-boss.y) < PLAYER_RADIUS+boss.radius){
-                player.hp -= 24; player.invincible = 18;
-                if(player.hp <= 0) gameOver(false);
-            }
+            if(boss && !bossDefeated && Math.hypot(player.x-boss.x, player.y-boss.y) < PLAYER_RADIUS+boss.radius){ player.hp -= 24; player.invincible = 18; if(player.hp <= 0) gameOver(false); }
             updateUI();
         }
         
-        function gameOver(isWin){
-            gameActive = false;
-            alert(isWin ? "✨ 胜利！ ✨" : "💀 被击败了 💀");
-            showLobby();
-        }
-        
-        function checkWinCondition(){
+        function checkWinByDoor(){
             if(!gameActive) return;
-            if(normalKills >= 20 || bossDefeated){
-                gameActive = false;
-                gameOver(true);
+            if(doorVisible && hasKey){
+                let distToDoor = Math.hypot(player.x - door.x, player.y - door.y);
+                if(distToDoor < PLAYER_RADIUS + 30){
+                    gameActive = false;
+                    alert("✨ 胜利！ 你触碰光门逃出神殿 ✨");
+                    showLobby();
+                }
             }
         }
         
-        function updateCooldowns(){
-            if(attackCd > 0) attackCd--;
-            if(ultCooldown > 0){ ultCooldown--; updateUI(); }
-        }
+        function gameOver(isWin){ gameActive = false; alert(isWin ? "✨ 胜利！ ✨" : "💀 被击败了 💀"); showLobby(); }
+        function checkWinCondition(){ if(!gameActive) return; if(bossDefeated || (normalKills>=20 && hasKey)) { /*胜利由触碰门触发*/ } }
+        function updateCooldowns(){ if(attackCd > 0) attackCd--; if(ultCooldown > 0){ ultCooldown--; updateUI(); } }
         
         function updatePlayerMove(){
             if(!gameActive) return;
-            if(useJoystick && joystickActive){
-                let len = Math.hypot(moveVec.x, moveVec.y);
-                if(len > 0.2){
-                    let step = 6.8;
-                    player.x += moveVec.x * step;
-                    player.y += moveVec.y * step;
-                }
+            if(useJoystick && joystickActive && (Math.abs(moveVec.x)>0.1 || Math.abs(moveVec.y)>0.1)){
+                let step = 6.8;
+                player.x += moveVec.x * step; player.y += moveVec.y * step;
             } else if(mouseDragActive){
-                let dx = dragTarget.x - player.x;
-                let dy = dragTarget.y - player.y;
-                let dist = Math.hypot(dx,dy);
-                if(dist > 3){
-                    let step = Math.min(7.0, dist);
-                    player.x += (dx/dist)*step;
-                    player.y += (dy/dist)*step;
-                } else {
-                    player.x = dragTarget.x;
-                    player.y = dragTarget.y;
-                }
+                let dx = dragTarget.x - player.x, dy = dragTarget.y - player.y, dist = Math.hypot(dx,dy);
+                if(dist > 3){ let step = Math.min(7.0, dist); player.x += (dx/dist)*step; player.y += (dy/dist)*step; }
+                else { player.x = dragTarget.x; player.y = dragTarget.y; }
             }
             player.x = Math.min(Math.max(player.x, PLAYER_RADIUS), MAP_W - PLAYER_RADIUS);
             player.y = Math.min(Math.max(player.y, PLAYER_RADIUS), MAP_H - PLAYER_RADIUS);
@@ -605,147 +552,79 @@
             else if(currentDifficulty === "medium") hunterSpeedBase = 2.3;
             else hunterSpeedBase = 3.5;
             for(let e of enemies) e.speed = e.originalSpeed = hunterSpeedBase * 0.96;
-            if(boss) boss.speed = boss.originalSpeed = hunterSpeedBase * 1.25;
+            if(boss) boss.speed = boss.originalSpeed = hunterSpeedBase * 1.28;
         }
         
         function resetGameSession(){
             player = { x: MAP_W/2, y: MAP_H/2, hp: 100, maxHp: 100, invincible: 0 };
             enemies = [];
             for(let i=0;i<20;i++){
-                let angle = Math.random() * Math.PI*2;
-                let rad = 500 + Math.random()*550;
-                let ex = player.x + Math.cos(angle)*rad;
-                let ey = player.y + Math.sin(angle)*rad;
-                ex = Math.min(Math.max(ex, 60), MAP_W-60);
-                ey = Math.min(Math.max(ey, 60), MAP_H-60);
+                let angle = Math.random() * Math.PI*2, rad = 550 + Math.random()*600;
+                let ex = player.x + Math.cos(angle)*rad, ey = player.y + Math.sin(angle)*rad;
+                ex = Math.min(Math.max(ex, 70), MAP_W-70); ey = Math.min(Math.max(ey, 70), MAP_H-70);
                 enemies.push({ x: ex, y: ey, hp: 100, maxHp:100, radius: 30, speed: hunterSpeedBase, originalSpeed: hunterSpeedBase, type: "mob" });
             }
-            let bx = player.x + (Math.random()>0.5? 1000 : -950);
-            let by = player.y + (Math.random()>0.5? 850 : -800);
-            bx = Math.min(Math.max(bx, 160), MAP_W-160);
-            by = Math.min(Math.max(by, 160), MAP_H-160);
+            let bx = player.x + (Math.random()>0.5? 1100 : -1050), by = player.y + (Math.random()>0.5? 900 : -850);
+            bx = Math.min(Math.max(bx, 180), MAP_W-180); by = Math.min(Math.max(by, 180), MAP_H-180);
             boss = { x: bx, y: by, hp: 10000, maxHp:10000, radius: 56, speed: hunterSpeedBase*1.28, originalSpeed: hunterSpeedBase*1.28, type: "boss" };
-            bossDefeated = false;
-            normalKills = 0;
-            gameActive = true;
-            projectiles = [];
-            attackCd = 0;
-            ultCooldown = 0;
-            hitEffects = [];
-            slowMap.clear();
-            markerPoint = { x: null, y: null };
-            updateUI();
-            applyDifficulty();
-            ensureMusicPlay();
+            bossDefeated = false; normalKills = 0; gameActive = true; hasKey = false; doorVisible = false; 
+            projectiles = []; attackCd = 0; ultCooldown = 0; hitEffects = []; slowMap.clear(); markerPoint = { x: null, y: null };
+            updateUI(); applyDifficulty();
+            requestMusicPlay();
         }
         
-        function showLobby(){
-            document.getElementById('lobbyOverlay').style.display = 'flex';
-            gameActive = false;
-            musicStarted = false;
-            if(bgmAudio) bgmAudio.pause();
-        }
-        function hideLobby(){
-            document.getElementById('lobbyOverlay').style.display = 'none';
-            resetGameSession();
-        }
+        function showLobby(){ document.getElementById('lobbyOverlay').style.display = 'flex'; gameActive = false; if(bgmAudio) bgmAudio.pause(); musicStarted=false; }
+        function hideLobby(){ document.getElementById('lobbyOverlay').style.display = 'none'; resetGameSession(); }
         
-        // ---------- 小地图绘制 (完整显示所有物体、门、标记+引导线) ----------
-        function drawMinimap(){
+        // 全图小地图绘制 (树木/小怪/BOSS/门/钥匙标记)
+        function drawFullMinimap(){
             const w = minimapCanvas.width, h = minimapCanvas.height;
             mmCtx.clearRect(0,0,w,h);
             mmCtx.fillStyle = '#2d4827';
             mmCtx.fillRect(0,0,w,h);
-            let zoom = minimapZoom;
-            let centerX = w/2, centerY = h/2;
-            let trans = (wx, wy) => {
-                let rx = (wx - player.x) * zoom + centerX;
-                let ry = (wy - player.y) * zoom + centerY;
-                return { x: rx, y: ry };
-            };
-            // 树木
-            mmCtx.fillStyle = '#a6d98c';
-            for(let t of trees){
-                let p = trans(t.x, t.y);
-                if(p.x>0 && p.x<w && p.y>0 && p.y<h) mmCtx.fillRect(p.x-2, p.y-2, 4,4);
-            }
-            // 小怪
-            for(let e of enemies){
-                let p = trans(e.x, e.y);
-                mmCtx.fillStyle = '#e3873e';
-                mmCtx.beginPath(); mmCtx.arc(p.x,p.y,5,0,Math.PI*2); mmCtx.fill();
-            }
-            // BOSS
-            if(boss && !bossDefeated){
-                let p = trans(boss.x, boss.y);
-                mmCtx.fillStyle = '#c05aa0';
-                mmCtx.beginPath(); mmCtx.arc(p.x,p.y,9,0,Math.PI*2); mmCtx.fill();
-                mmCtx.fillStyle = 'white'; mmCtx.font='bold 14px monospace'; mmCtx.fillText("B", p.x-5, p.y+5);
-            }
-            // 门？ 其实游戏没有门，但设置一个虚拟标记点当作“胜利信标”
-            // 展示用户自定义标记
+            let scaleX = w / MAP_W;
+            let scaleY = h / MAP_H;
+            let trans = (wx, wy) => ({ x: wx * scaleX, y: wy * scaleY });
+            
+            mmCtx.fillStyle = '#6aab5a';
+            for(let t of trees){ let p = trans(t.x, t.y); if(p.x>=0 && p.x<=w && p.y>=0 && p.y<=h) mmCtx.fillRect(p.x-2, p.y-2, 4,4); }
+            for(let e of enemies){ let p = trans(e.x, e.y); mmCtx.fillStyle = '#e3864a'; mmCtx.beginPath(); mmCtx.arc(p.x, p.y, 5, 0, Math.PI*2); mmCtx.fill(); mmCtx.fillStyle = '#fff7c0'; mmCtx.font='bold 10px monospace'; mmCtx.fillText("👾", p.x-4, p.y+3); }
+            if(boss && !bossDefeated){ let p = trans(boss.x, boss.y); mmCtx.fillStyle = '#c05aa0'; mmCtx.beginPath(); mmCtx.arc(p.x, p.y, 9, 0, Math.PI*2); mmCtx.fill(); mmCtx.fillStyle = '#ffffff'; mmCtx.font='bold 12px monospace'; mmCtx.fillText("💀", p.x-6, p.y+5); }
+            if(doorVisible && hasKey){ let p = trans(door.x, door.y); mmCtx.fillStyle = '#ffdd88'; mmCtx.beginPath(); mmCtx.arc(p.x, p.y, 8, 0, Math.PI*2); mmCtx.fill(); mmCtx.fillStyle = '#ffffff'; mmCtx.font='bold 12px monospace'; mmCtx.fillText("🚪", p.x-5, p.y+4); }
             if(markerPoint.x !== null && markerPoint.y !== null){
                 let p = trans(markerPoint.x, markerPoint.y);
-                mmCtx.fillStyle = '#66ccff';
-                mmCtx.beginPath(); mmCtx.arc(p.x, p.y, 7, 0, Math.PI*2); mmCtx.fill();
-                mmCtx.fillStyle = '#ffffff'; mmCtx.font='bold 12px monospace'; mmCtx.fillText("📍", p.x-6, p.y+4);
-                // 画引导线 (玩家到标记)
+                mmCtx.fillStyle = '#66ccff'; mmCtx.beginPath(); mmCtx.arc(p.x, p.y, 6, 0, Math.PI*2); mmCtx.fill();
+                mmCtx.fillStyle = 'white'; mmCtx.font='bold 12px monospace'; mmCtx.fillText("📍", p.x-5, p.y+4);
                 let playerPix = trans(player.x, player.y);
-                mmCtx.beginPath();
-                mmCtx.moveTo(playerPix.x, playerPix.y);
-                mmCtx.lineTo(p.x, p.y);
-                mmCtx.strokeStyle = '#66ff99';
-                mmCtx.lineWidth = 2;
-                mmCtx.setLineDash([5, 5]);
-                mmCtx.stroke();
-                mmCtx.setLineDash([]);
+                mmCtx.beginPath(); mmCtx.moveTo(playerPix.x, playerPix.y); mmCtx.lineTo(p.x, p.y);
+                mmCtx.strokeStyle = '#66ff99'; mmCtx.lineWidth = 2; mmCtx.setLineDash([5,5]); mmCtx.stroke(); mmCtx.setLineDash([]);
             }
-            // 玩家自身
             let pp = trans(player.x, player.y);
             mmCtx.fillStyle = '#55ff77';
             mmCtx.beginPath(); mmCtx.moveTo(pp.x, pp.y-8); mmCtx.lineTo(pp.x-6, pp.y+4); mmCtx.lineTo(pp.x+6, pp.y+4); mmCtx.fill();
-            // 视野框
-            let v1 = trans(camera.x, camera.y);
-            let v2 = trans(camera.x+canvas.width, camera.y+canvas.height);
-            mmCtx.strokeStyle = '#ffdd99';
-            mmCtx.lineWidth = 1.5;
-            mmCtx.strokeRect(v1.x, v1.y, v2.x-v1.x, v2.y-v1.y);
+            let tl = trans(camera.x, camera.y), br = trans(camera.x+canvas.width, camera.y+canvas.height);
+            mmCtx.strokeStyle = '#ffdd99'; mmCtx.lineWidth = 1.8; mmCtx.strokeRect(tl.x, tl.y, br.x-tl.x, br.y-tl.y);
         }
         
-        // 小地图交互：点击设置标记点 (世界坐标)
         function onMinimapClick(e){
             const rect = minimapCanvas.getBoundingClientRect();
             const scaleX = minimapCanvas.width / rect.width;
             const scaleY = minimapCanvas.height / rect.height;
             let clientX, clientY;
-            if(e.touches){
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
+            if(e.touches){ clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; }
+            else { clientX = e.clientX; clientY = e.clientY; }
             let canvasX = (clientX - rect.left) * scaleX;
             let canvasY = (clientY - rect.top) * scaleY;
-            let zoom = minimapZoom;
-            let centerX = minimapCanvas.width/2, centerY = minimapCanvas.height/2;
-            let worldX = (canvasX - centerX) / zoom + player.x;
-            let worldY = (canvasY - centerY) / zoom + player.y;
-            worldX = Math.min(Math.max(worldX, 0), MAP_W);
-            worldY = Math.min(Math.max(worldY, 0), MAP_H);
+            let worldX = canvasX / (minimapCanvas.width / MAP_W);
+            let worldY = canvasY / (minimapCanvas.height / MAP_H);
+            worldX = Math.min(Math.max(worldX, 0), MAP_W); worldY = Math.min(Math.max(worldY, 0), MAP_H);
             markerPoint = { x: worldX, y: worldY };
-            drawMinimap();
+            drawFullMinimap();
             e.stopPropagation();
         }
         
-        function toggleMinimap(){
-            minimapWrap.classList.toggle('full');
-            if(minimapWrap.classList.contains('full')) minimapZoom = 1.3;
-            else minimapZoom = 1.0;
-            drawMinimap();
-        }
+        function toggleMinimap(){ minimapWrap.classList.toggle('full'); drawFullMinimap(); }
         
-        // 摇杆逻辑
         function initJoystick(){
             let container = document.getElementById('joystickContainer');
             let thumb = joystickThumb;
@@ -755,10 +634,7 @@
                 let rect = container.getBoundingClientRect();
                 joystickCenter.x = rect.left + rect.width/2;
                 joystickCenter.y = rect.top + rect.height/2;
-                active = true;
-                joystickActive = true;
-                useJoystick = true;
-                moveVec = { x:0, y:0 };
+                active = true; joystickActive = true; useJoystick = true; moveVec = { x:0, y:0 };
                 thumb.style.transform = `translate(-50%, -50%)`;
             });
             window.addEventListener('touchmove', (e)=>{
@@ -769,22 +645,15 @@
                 let len = Math.hypot(dx,dy);
                 let maxR = 45;
                 if(len > maxR){ dx = dx/len*maxR; dy = dy/len*maxR; }
-                moveVec.x = dx / 35;
-                moveVec.y = dy / 35;
+                moveVec.x = dx / 35; moveVec.y = dy / 35;
                 if(Math.abs(moveVec.x)>1) moveVec.x = moveVec.x/Math.abs(moveVec.x);
                 if(Math.abs(moveVec.y)>1) moveVec.y = moveVec.y/Math.abs(moveVec.y);
                 thumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
                 e.preventDefault();
             });
-            window.addEventListener('touchend', ()=>{
-                active = false;
-                joystickActive = false;
-                moveVec = { x:0, y:0 };
-                thumb.style.transform = `translate(-50%, -50%)`;
-            });
+            window.addEventListener('touchend', ()=>{ active = false; joystickActive = false; moveVec = { x:0, y:0 }; thumb.style.transform = `translate(-50%, -50%)`; });
         }
         
-        // 鼠标移动/拖拽
         function getCanvasCoord(e){
             let rect = canvas.getBoundingClientRect();
             let sx = canvas.width/rect.width, sy = canvas.height/rect.height;
@@ -792,37 +661,31 @@
             let cy = e.clientY || (e.touches ? e.touches[0].clientY : 0);
             return { x: (cx - rect.left)*sx, y: (cy - rect.top)*sy };
         }
-        function onDragStart(e){
-            let coord = getCanvasCoord(e);
-            dragTarget = { x: coord.x + camera.x, y: coord.y + camera.y };
-            mouseDragActive = true;
-            useJoystick = false;
-        }
-        function onDragMove(e){
-            if(!mouseDragActive) return;
-            let coord = getCanvasCoord(e);
-            dragTarget = { x: coord.x + camera.x, y: coord.y + camera.y };
-        }
+        function onDragStart(e){ let coord = getCanvasCoord(e); dragTarget = { x: coord.x + camera.x, y: coord.y + camera.y }; mouseDragActive = true; useJoystick = false; }
+        function onDragMove(e){ if(!mouseDragActive) return; let coord = getCanvasCoord(e); dragTarget = { x: coord.x + camera.x, y: coord.y + camera.y }; }
         function onDragEnd(){ mouseDragActive = false; }
         function onMouseMove(e){
             let coord = getCanvasCoord(e);
             let worldX = coord.x + camera.x, worldY = coord.y + camera.y;
-            let dx = worldX - player.x, dy = worldY - player.y;
-            let len = Math.hypot(dx,dy);
+            let dx = worldX - player.x, dy = worldY - player.y, len = Math.hypot(dx,dy);
             if(len > 0.01){ aimDir.x = dx/len; aimDir.y = dy/len; }
         }
         
-        // 绘图辅助
+        // 主要绘图
         function drawBackground(){
-            ctx.fillStyle = '#346b34';
-            ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle = '#346b34'; ctx.fillRect(0,0,canvas.width,canvas.height);
             for(let t of trees){
                 let sx = t.x - camera.x, sy = t.y - camera.y;
                 if(sx > -80 && sx < canvas.width+80){
-                    ctx.fillStyle = '#5c8c44';
-                    ctx.fillRect(sx-10, sy-15, 20, 30);
-                    ctx.fillStyle = '#47632c';
-                    ctx.beginPath(); ctx.arc(sx, sy-18, 14, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = '#5c8c44'; ctx.fillRect(sx-10, sy-15, 20, 30);
+                    ctx.fillStyle = '#47632c'; ctx.beginPath(); ctx.arc(sx, sy-18, 14, 0, Math.PI*2); ctx.fill();
+                }
+            }
+            if(doorVisible && hasKey){
+                let sx = door.x - camera.x, sy = door.y - camera.y;
+                if(sx > -60 && sx < canvas.width+60){
+                    ctx.fillStyle = '#ffdd99'; ctx.shadowBlur = 12; ctx.beginPath(); ctx.arc(sx, sy, 28, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = '#ffaa55'; ctx.font='bold 28px monospace'; ctx.fillText("🚪", sx-15, sy+12); ctx.shadowBlur=0;
                 }
             }
         }
@@ -830,26 +693,19 @@
             for(let e of enemies){
                 let sx = e.x - camera.x, sy = e.y - camera.y;
                 if(mobReady) ctx.drawImage(mobImage, sx-28, sy-28, 56,56);
-                else ctx.fillStyle='#b33e3e', ctx.beginPath(), ctx.arc(sx,sy,26,0,Math.PI*2), ctx.fill();
-                ctx.fillStyle='#fff2b0'; ctx.font='bold 16px monospace';
-                ctx.fillText(`❤️ ${e.hp}`, sx-22, sy-34);
+                else{ ctx.fillStyle='#b33e3e'; ctx.beginPath(); ctx.arc(sx,sy,26,0,Math.PI*2); ctx.fill(); }
+                ctx.fillStyle='#fff2b0'; ctx.font='bold 16px monospace'; ctx.fillText(`❤️ ${e.hp}`, sx-22, sy-34);
                 if(hitEffects.some(h=>h.entity===e)) ctx.fillText("😍", sx-18, sy-52);
             }
             if(boss && !bossDefeated){
                 let sx = boss.x - camera.x, sy = boss.y - camera.y;
                 if(bossReady) ctx.drawImage(bossImage, sx-48, sy-48, 96,96);
-                else ctx.fillStyle='#8f2f6f', ctx.beginPath(), ctx.arc(sx,sy,44,0,Math.PI*2), ctx.fill();
-                ctx.fillStyle='#ffbc6e'; ctx.font='bold 22px monospace';
-                ctx.fillText(`💀 ${boss.hp}`, sx-50, sy-62);
+                else{ ctx.fillStyle='#8f2f6f'; ctx.beginPath(); ctx.arc(sx,sy,44,0,Math.PI*2); ctx.fill(); }
+                ctx.fillStyle='#ffbc6e'; ctx.font='bold 22px monospace'; ctx.fillText(`💀 ${boss.hp}`, sx-50, sy-62);
                 if(hitEffects.some(h=>h.entity===boss)) ctx.fillText("😍", sx-28, sy-78);
             }
         }
-        function drawProjectiles(){
-            for(let p of projectiles){
-                let sx = p.x - camera.x, sy = p.y - camera.y;
-                ctx.fillStyle = '#ffec80'; ctx.font = 'bold 24px "KaiTi"'; ctx.fillText("桂英", sx-18, sy-8);
-            }
-        }
+        function drawProjectiles(){ for(let p of projectiles){ let sx = p.x - camera.x, sy = p.y - camera.y; ctx.fillStyle='#ffec80'; ctx.font='bold 24px "KaiTi"'; ctx.fillText("桂英", sx-18, sy-8); } }
         function drawPlayer(){
             let sx = player.x - camera.x, sy = player.y - camera.y;
             ctx.font = '52px "Segoe UI Emoji"'; ctx.fillStyle = '#ffffb0'; ctx.fillText("🙂", sx-24, sy+16);
@@ -860,52 +716,38 @@
             ctx.fillStyle = '#aa2222'; ctx.fillRect(sx-30, sy-42, 60, 8);
             ctx.fillStyle = '#44ff44'; ctx.fillRect(sx-30, sy-42, 60*percent, 8);
         }
-        function drawAll(){ drawBackground(); drawEnemies(); drawProjectiles(); drawPlayer(); drawMinimap(); }
+        function drawAll(){ drawBackground(); drawEnemies(); drawProjectiles(); drawPlayer(); drawFullMinimap(); }
         
-        function resizeCanvas(){
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            drawAll();
-        }
+        function resizeCanvas(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; drawAll(); }
         
-        // 主循环
         function gameUpdate(){
             if(gameActive){
-                updateEnemies();
-                updateProjectiles();
-                checkPlayerHurt();
-                updateCooldowns();
-                updatePlayerMove();
-                updateDebuffs();
-                updateCamera();
-                checkWinCondition();
+                updateEnemies(); updateProjectiles(); checkPlayerHurt(); updateCooldowns();
+                updatePlayerMove(); updateDebuffs(); updateCamera(); checkWinByDoor();
                 drawAll();
             } else drawAll();
             requestAnimationFrame(gameUpdate);
         }
         
-        // 事件绑定
-        window.addEventListener('resize', ()=>{ resizeCanvas(); drawMinimap(); });
+        for(let i=0;i<TREE_COUNT;i++) trees.push({ x: 80+Math.random()*(MAP_W-160), y: 80+Math.random()*(MAP_H-160) });
+        
+        window.addEventListener('resize', ()=>{ resizeCanvas(); drawFullMinimap(); });
         document.getElementById('attackBtn').addEventListener('click', ()=>normalAttack());
         document.getElementById('ultraBtn').addEventListener('click', ()=>castUltimate());
         minimapWrap.addEventListener('click', (e)=>{ if(e.target === minimapCanvas || e.target.closest('#minimapCanvas')) onMinimapClick(e); else toggleMinimap(); });
         window.addEventListener('keydown', (e)=>{
             if(e.key === 'm' || e.key === 'M') toggleMinimap();
-            if(e.key === 'e' || e.key === 'E'){ e.preventDefault(); normalAttack(); }
-            if(e.key === 'q' || e.key === 'Q'){ e.preventDefault(); castUltimate(); }
+            if(e.key === 'e' || e.key === 'E'){ e.preventDefault(); normalAttack(); requestMusicPlay(); }
+            if(e.key === 'q' || e.key === 'Q'){ e.preventDefault(); castUltimate(); requestMusicPlay(); }
         });
         canvas.addEventListener('mousemove', onMouseMove);
         canvas.addEventListener('mousedown', onDragStart);
         window.addEventListener('mousemove', onDragMove);
         window.addEventListener('mouseup', onDragEnd);
-        canvas.addEventListener('touchstart', (e)=>{ onMouseMove(e.touches[0]); onDragStart(e); });
+        canvas.addEventListener('touchstart', (e)=>{ onMouseMove(e.touches[0]); onDragStart(e); requestMusicPlay(); });
         
-        for(let i=0;i<TREE_COUNT;i++) trees.push({ x: 100+Math.random()*(MAP_W-200), y: 100+Math.random()*(MAP_H-200) });
-        initJoystick();
-        resizeCanvas();
-        showLobby();
-        
-        document.getElementById('startGameBtn').onclick = ()=>{ hideLobby(); };
+        initJoystick(); resizeCanvas(); showLobby(); bindMusicToUser();
+        document.getElementById('startGameBtn').onclick = ()=>{ hideLobby(); requestMusicPlay(); };
         document.getElementById('exitGameBtn').onclick = ()=>{ if(confirm("退出游戏？")) window.close?.(); alert("手动关闭页面"); };
         document.querySelectorAll('.diff-btn').forEach(btn=>{
             btn.onclick = ()=>{
