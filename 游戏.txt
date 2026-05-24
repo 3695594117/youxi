@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>大逃杀 · 追逐暗影 · 迷你小地图</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(145deg, #0a2f1f 0%, #0b3b1a 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Poppins', 'Microsoft Yahei', system-ui, -apple-system, sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            position: relative;
+        }
+
+        .game-container {
+            background: #2b4b2a;
+            border-radius: 40px;
+            padding: 16px;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.5), inset 0 1px 4px rgba(255,255,200,0.3);
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 24px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            cursor: grab;
+            background-color: #3c6b3a;
+        }
+        canvas:active {
+            cursor: grabbing;
+        }
+
+        /* 迷你地图面板 (右上角) */
+        .minimap-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 180px;
+            height: 180px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(12px);
+            border-radius: 24px;
+            border: 2px solid #ffd966;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+            overflow: hidden;
+            z-index: 30;
+            transition: all 0.2s ease;
+        }
+        .minimap-header {
+            background: #ffd966cc;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #1e3a1a;
+            cursor: move;
+            backdrop-filter: blur(4px);
+        }
+        .zoom-controls {
+            display: flex;
+            gap: 10px;
+        }
+        .zoom-btn {
+            background: #2c2c1c;
+            border: none;
+            color: #ffdd99;
+            width: 22px;
+            height: 22px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            line-height: 1;
+            padding: 0;
+            box-shadow: none;
+        }
+        .zoom-btn:active {
+            transform: scale(0.9);
+        }
+        canvas.minimap-canvas {
+            width: 100%;
+            height: calc(100% - 32px);
+            background: #2d4827;
+            display: block;
+            cursor: pointer;
+        }
+        /* 标记指示器 */
+        .marker-badge {
+            position: absolute;
+            bottom: 6px;
+            left: 6px;
+            background: #000000aa;
+            border-radius: 20px;
+            padding: 2px 8px;
+            font-size: 10px;
+            color: #ffdd88;
+            pointer-events: none;
+        }
+
+        .ui-panel {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            padding: 12px 24px;
+            border-radius: 60px;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .status-card {
+            background: #1f2a1b;
+            padding: 6px 18px;
+            border-radius: 40px;
+            color: #ffebc2;
+            font-weight: bold;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: inset 0 0 0 1px #96d46e, 0 2px 6px black;
+        }
+
+        .status-card span {
+            color: #ffd966;
+            font-size: 1.4rem;
+            margin-right: 6px;
+        }
+
+        button {
+            background: #d4a017;
+            border: none;
+            font-size: 1rem;
+            font-weight: bold;
+            padding: 8px 24px;
+            border-radius: 36px;
+            color: #2c2c1c;
+            cursor: pointer;
+            transition: 0.1s linear;
+            box-shadow: 0 3px 0 #6b3c00;
+            font-family: inherit;
+        }
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #6b3c00;
+        }
+
+        /* 结算浮层 */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(12px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: 0.2s ease;
+        }
+        .overlay.active {
+            visibility: visible;
+            opacity: 1;
+        }
+        .result-card {
+            background: #1e2b1c;
+            border-radius: 48px;
+            padding: 32px 28px;
+            text-align: center;
+            width: 280px;
+            border: 2px solid #ffd966;
+            box-shadow: 0 20px 30px black;
+        }
+        .result-emoji {
+            font-size: 72px;
+            margin-bottom: 12px;
+        }
+        .result-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffd966;
+            margin-bottom: 20px;
+        }
+        .result-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .result-buttons button {
+            background: #ffc857;
+            padding: 10px 20px;
+            font-size: 0.9rem;
+        }
+
+        .joystick-hint {
+            position: fixed;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 30px;
+            padding: 6px 14px;
+            font-size: 11px;
+            color: #ccc;
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        @media (max-width: 700px) {
+            .minimap-container { width: 130px; height: 130px; top: 12px; right: 12px; }
+            .minimap-header { font-size: 9px; padding: 3px 6px; }
+            .zoom-btn { width: 18px; height: 18px; font-size: 10px; }
+            .status-card { font-size: 0.8rem; padding: 4px 12px; }
+            button { padding: 5px 16px; font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <canvas id="gameCanvas" width="750" height="600"></canvas>
+    <div class="ui-panel">
+        <div class="status-card">🏹 追杀者距离: <span id="distanceMeter">--</span></div>
+        <div class="status-card">🚪 逃离之门: <span id="doorStatus">🔒 未找到</span></div>
+        <button id="resetBtn">🔄 重置对局</button>
+    </div>
+</div>
+
+<!-- 迷你地图浮层 + 缩放 -->
+<div class="minimap-container" id="minimapWrap">
+    <div class="minimap-header" id="minimapHeader">
+        🗺️ 森林雷达
+        <div class="zoom-controls">
+            <button class="zoom-btn" id="zoomInBtn">+</button>
+            <button class="zoom-btn" id="zoomOutBtn">-</button>
+        </div>
+    </div>
+    <canvas id="minimapCanvas" width="300" height="300" style="width:100%; height:calc(100% - 32px); background:#2d4827;"></canvas>
+    <div class="marker-badge">📍 绿点=玩家 | 红点=追杀者 | 🚪=门</div>
+</div>
+
+<!-- 结算界面 -->
+<div id="resultOverlay" class="overlay">
+    <div class="result-card">
+        <div class="result-emoji" id="resultEmoji">😍</div>
+        <div class="result-title" id="resultTitle">胜利！</div>
+        <p style="color:#ffe0a3; margin-bottom: 8px;">你逃出了噩梦森林</p>
+        <div class="result-buttons">
+            <button id="rematchBtn">🔁 再来一局</button>
+            <button id="lobbyBtn">🏠 回大厅</button>
+        </div>
+    </div>
+</div>
+<div class="joystick-hint">🎮 手指拖拽 / 鼠标滑动 → 移动角色 | 追杀者会追击</div>
+
+<script>
+    (function() {
+        // ---------- 世界参数 ----------
+        const MAP_W = 3000;
+        const MAP_H = 2400;
+        const PLAYER_RADIUS = 24;
+        const HUNTER_RADIUS = 32;
+        const DOOR_RADIUS = 26;
+        const TREE_COUNT = 85;
+
+        // 游戏状态
+        let gameRunning = true;
+        let gameWinFlag = false;
+        let playerPos = { x: MAP_W/2 + 120, y: MAP_H/2 + 100 };
+        let hunterPos = { x: MAP_W/2 - 320, y: MAP_H/2 - 260 };
+        let doorPos = { x: 0, y: 0 };
+        let trees = [];
+
+        // 摄像机偏移 (拖拽移动视角)
+        let camera = { x: 0, y: 0 };
+        let isDraggingView = false;
+        let dragStart = { x: 0, y: 0 };
+        let camStart = { x: 0, y: 0 };
+
+        // 玩家移动 (拖拽式)
+        let isMoving = false;
+        let moveTarget = { x: playerPos.x, y: playerPos.y };
+
+        // 追杀者速度
+        let hunterSpeed = 1.28;
+        let proximityDistance = 0;
+
+        // DOM 元素
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const distanceSpan = document.getElementById('distanceMeter');
+        const doorStatusSpan = document.getElementById('doorStatus');
+        const resetBtn = document.getElementById('resetBtn');
+        
+        // 小地图相关
+        const minimapCanvas = document.getElementById('minimapCanvas');
+        const mmCtx = minimapCanvas.getContext('2d');
+        let minimapZoom = 1.0;
+        const ZOOM_MIN = 0.6;
+        const ZOOM_MAX = 2.5;
+        let minimapOffsetX = 0, minimapOffsetY = 0;  // 用于平移（如果需要）
+        
+        // 追杀者图片
+        const hunterImg = new Image();
+        hunterImg.crossOrigin = "Anonymous";
+        hunterImg.src = "https://t.tutu.to/img/LywgQ";
+        let hunterImageReady = false;
+        hunterImg.onload = () => { hunterImageReady = true; };
+        
+        // ---------- 初始化世界 ----------
+        function initGame() {
+            // 随机生成树木 (不与玩家出生点和门冲突)
+            trees = [];
+            for(let i=0; i<TREE_COUNT; i++) {
+                let tree = { x: Math.random() * (MAP_W - 120) + 60, y: Math.random() * (MAP_H - 120) + 60 };
+                // 避免重叠出生区域
+                const dxp = tree.x - playerPos.x, dyp = tree.y - playerPos.y;
+                const dxh = tree.x - hunterPos.x, dyh = tree.y - hunterPos.y;
+                if(Math.hypot(dxp, dyp) < 80 || Math.hypot(dxh, dyh) < 90) {
+                    i--; continue;
+                }
+                trees.push(tree);
+            }
+            // 随机生成门 (保证离玩家足够远)
+            let safe = false;
+            while(!safe) {
+                doorPos = { x: 200 + Math.random() * (MAP_W - 400), y: 200 + Math.random() * (MAP_H - 400) };
+                const distToPlayer = Math.hypot(doorPos.x - playerPos.x, doorPos.y - playerPos.y);
+                const distToHunter = Math.hypot(doorPos.x - hunterPos.x, doorPos.y - hunterPos.y);
+                if(distToPlayer > 550 && distToHunter > 400) safe = true;
+            }
+            // 确保追杀者不在门旁边
+            gameRunning = true;
+            gameWinFlag = false;
+            doorStatusSpan.innerText = "🔒 未找到";
+            updateDistanceUI();
+            draw();
+            updateMiniMap();
+        }
+        
+        // 重置整个对局 (但不重置摄像机偏移)
+        function fullReset() {
+            playerPos = { x: MAP_W/2 + 120, y: MAP_H/2 + 100 };
+            hunterPos = { x: MAP_W/2 - 320, y: MAP_H/2 - 260 };
+            moveTarget = { x: playerPos.x, y: playerPos.y };
+            gameRunning = true;
+            gameWinFlag = false;
+            doorStatusSpan.innerText = "🔒 未找到";
+            initGame();   // 重新生成树木/门
+            updateDistanceUI();
+            draw();
+            updateMiniMap();
+            if(document.getElementById('resultOverlay').classList.contains('active')) {
+                document.getElementById('resultOverlay').classList.remove('active');
+            }
+        }
+        
+        // 距离更新
+        function updateDistanceUI() {
+            if(!gameRunning) return;
+            const dist = Math.hypot(playerPos.x - hunterPos.x, playerPos.y - hunterPos.y);
+            proximityDistance = Math.floor(dist);
+            distanceSpan.innerText = proximityDistance;
+        }
+        
+        // 追杀者 AI (简单追逐)
+        function updateHunter() {
+            if(!gameRunning || gameWinFlag) return;
+            const dx = playerPos.x - hunterPos.x;
+            const dy = playerPos.y - hunterPos.y;
+            const len = Math.hypot(dx, dy);
+            if(len > 0.5) {
+                const move = Math.min(hunterSpeed, len - 12);
+                hunterPos.x += (dx / len) * move;
+                hunterPos.y += (dy / len) * move;
+            }
+            // 边界限制
+            hunterPos.x = Math.min(Math.max(hunterPos.x, HUNTER_RADIUS), MAP_W - HUNTER_RADIUS);
+            hunterPos.y = Math.min(Math.max(hunterPos.y, HUNTER_RADIUS), MAP_H - HUNTER_RADIUS);
+        }
+        
+        // 玩家移动 （通过拖拽目标点平滑移动）
+        function updatePlayerMovement() {
+            if(!gameRunning || gameWinFlag) return;
+            const dx = moveTarget.x - playerPos.x;
+            const dy = moveTarget.y - playerPos.y;
+            const distance = Math.hypot(dx, dy);
+            let step = 7.2;
+            if(distance < step) {
+                playerPos.x = moveTarget.x;
+                playerPos.y = moveTarget.y;
+            } else {
+                playerPos.x += (dx / distance) * step;
+                playerPos.y += (dy / distance) * step;
+            }
+            // 边界
+            playerPos.x = Math.min(Math.max(playerPos.x, PLAYER_RADIUS), MAP_W - PLAYER_RADIUS);
+            playerPos.y = Math.min(Math.max(playerPos.y, PLAYER_RADIUS), MAP_H - PLAYER_RADIUS);
+            // 同步移动目标防止溢出
+            moveTarget.x = Math.min(Math.max(moveTarget.x, PLAYER_RADIUS), MAP_W - PLAYER_RADIUS);
+            moveTarget.y = Math.min(Math.max(moveTarget.y, PLAYER_RADIUS), MAP_H - PLAYER_RADIUS);
+        }
+        
+        // 胜利/失败判定 + 表情动态
+        function checkGameStatus() {
+            if(!gameRunning || gameWinFlag) return;
+            // 碰到门 → 胜利
+            const distToDoor = Math.hypot(playerPos.x - doorPos.x, playerPos.y - doorPos.y);
+            if(distToDoor < PLAYER_RADIUS + DOOR_RADIUS) {
+                gameWinFlag = true;
+                gameRunning = false;
+                doorStatusSpan.innerText = "✅ 已逃离!";
+                showResult(true);
+                return;
+            }
+            // 碰到追杀者 → 失败
+            const distToHunter = Math.hypot(playerPos.x - hunterPos.x, playerPos.y - hunterPos.y);
+            if(distToHunter < PLAYER_RADIUS + HUNTER_RADIUS) {
+                gameWinFlag = false;
+                gameRunning = false;
+                showResult(false);
+                return;
+            }
+            // 更新门的文字提示(接近高亮)
+            if(distToDoor < 90) doorStatusSpan.innerText = "🚪 门就在附近!";
+            else doorStatusSpan.innerText = "🔒 寻找木门";
+        }
+        
+        // 结算界面
+        function showResult(isWin) {
+            const overlay = document.getElementById('resultOverlay');
+            const emojiSpan = document.getElementById('resultEmoji');
+            const titleSpan = document.getElementById('resultTitle');
+            if(isWin) {
+                emojiSpan.innerText = "😍";
+                titleSpan.innerText = "胜利大逃亡!";
+            } else {
+                emojiSpan.innerText = "😱";
+                titleSpan.innerText = "被追杀者抓获...";
+            }
+            overlay.classList.add('active');
+        }
+        
+        // 摄像机跟随 (同时支持拖拽)
+        function updateCamera() {
+            if(!isDraggingView) {
+                // 平滑跟随玩家
+                let targetCamX = playerPos.x - canvas.width/2;
+                let targetCamY = playerPos.y - canvas.height/2;
+                targetCamX = Math.min(Math.max(targetCamX, 0), MAP_W - canvas.width);
+                targetCamY = Math.min(Math.max(targetCamY, 0), MAP_H - canvas.height);
+                camera.x += (targetCamX - camera.x) * 0.12;
+                camera.y += (targetCamY - camera.y) * 0.12;
+            }
+            camera.x = Math.min(Math.max(camera.x, 0), MAP_W - canvas.width);
+            camera.y = Math.min(Math.max(camera.y, 0), MAP_H - canvas.height);
+        }
+        
+        // ---------- 绘图模块 (世界) ----------
+        function drawTrees() {
+            for(let t of trees) {
+                let screenX = t.x - camera.x;
+                let screenY = t.y - camera.y;
+                if(screenX > -40 && screenX < canvas.width+40 && screenY > -40 && screenY < canvas.height+40) {
+                    ctx.fillStyle = '#4f7942';
+                    ctx.shadowBlur = 0;
+                    ctx.beginPath();
+                    ctx.rect(screenX-10, screenY-12, 20, 28);
+                    ctx.fill();
+                    ctx.fillStyle = '#6b3e1a';
+                    ctx.fillRect(screenX-5, screenY-5, 10, 18);
+                    ctx.fillStyle = '#3c9e3c';
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY-12, 14, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
+        }
+        
+        function drawDoor() {
+            let screenX = doorPos.x - camera.x;
+            let screenY = doorPos.y - camera.y;
+            if(screenX > -50 && screenX < canvas.width+50 && screenY > -50 && screenY < canvas.height+50) {
+                ctx.fillStyle = '#b57c48';
+                ctx.shadowBlur = 0;
+                ctx.fillRect(screenX-14, screenY-22, 28, 44);
+                ctx.fillStyle = '#e6b422';
+                ctx.fillRect(screenX-5, screenY-10, 10, 20);
+                ctx.fillStyle = '#ffd966';
+                ctx.font = "bold 20px 'Segoe UI'";
+                ctx.shadowBlur = 6;
+                ctx.fillText("🚪", screenX-12, screenY-5);
+            }
+        }
+        
+        function drawPlayer() {
+            let screenX = playerPos.x - camera.x;
+            let screenY = playerPos.y - camera.y;
+            ctx.shadowBlur = 4;
+            // 根据追杀者距离改变表情
+            const distToHunter = Math.hypot(playerPos.x - hunterPos.x, playerPos.y - hunterPos.y);
+            let emoji = "🙂";
+            if(distToHunter < 110) emoji = "😱";
+            else if(distToHunter < 220) emoji = "😨";
+            else emoji = "🙂";
+            ctx.font = `46px "Segoe UI Emoji"`;
+            ctx.fillStyle = "#fff9e0";
+            ctx.fillText(emoji, screenX-24, screenY+18);
+            ctx.font = "bold 18px system-ui";
+            ctx.fillStyle = "#fdffb9";
+            ctx.shadowBlur = 2;
+            ctx.fillText("⚔️", screenX-10, screenY-12);
+        }
+        
+        function drawHunter() {
+            let screenX = hunterPos.x - camera.x;
+            let screenY = hunterPos.y - camera.y;
+            if(screenX > -60 && screenX < canvas.width+60 && screenY > -60 && screenY < canvas.height+60) {
+                if(hunterImageReady && hunterImg.complete) {
+                    ctx.drawImage(hunterImg, screenX-32, screenY-32, 64, 64);
+                } else {
+                    ctx.fillStyle = "#7a2e2e";
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, 28, 0, Math.PI*2);
+                    ctx.fill();
+                    ctx.fillStyle = "#ffaa66";
+                    ctx.font = "32px monospace";
+                    ctx.fillText("👹", screenX-18, screenY+12);
+                }
+                // 红眼特效
+                ctx.fillStyle = "#ff0000aa";
+                ctx.beginPath();
+                ctx.arc(screenX-12, screenY-8, 6, 0, Math.PI*2);
+                ctx.arc(screenX+12, screenY-8, 6, 0, Math.PI*2);
+                ctx.fill();
+            }
+        }
+        
+        // 全绘制
+        function draw() {
+            if(!canvas || !ctx) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // 草地背景
+            ctx.fillStyle = '#4d8047';
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+            drawTrees();
+            drawDoor();
+            drawHunter();
+            drawPlayer();
+            // 网格线
+            ctx.strokeStyle = '#aacf9e55';
+            ctx.lineWidth = 1;
+            for(let i=0;i<MAP_W;i+=200){
+                ctx.beginPath();
+                ctx.moveTo(i-camera.x,0); ctx.lineTo(i-camera.x,canvas.height);
+                ctx.stroke();
+                ctx.moveTo(0,i-camera.y); ctx.lineTo(canvas.width,i-camera.y);
+                ctx.stroke();
+            }
+            updateDistanceUI();
+        }
+        
+        // 迷你地图 (可缩放 + 标记)
+        function updateMiniMap() {
+            const w = minimapCanvas.width, h = minimapCanvas.height;
+            mmCtx.clearRect(0, 0, w, h);
+            mmCtx.fillStyle = '#2d4827';
+            mmCtx.fillRect(0, 0, w, h);
+            
+            const zoom = minimapZoom;
+            const centerX = w/2, centerY = h/2;
+            // 世界坐标到小地图像素的函数
+            const worldToMap = (wx, wy) => {
+                let rx = (wx - MAP_W/2) * zoom + centerX + minimapOffsetX;
+                let ry = (wy - MAP_H/2) * zoom + centerY + minimapOffsetY;
+                return {x: rx, y: ry};
+            };
+            
+            // 画树木 (小点)
+            mmCtx.fillStyle = '#86bf6c';
+            for(let t of trees) {
+                let p = worldToMap(t.x, t.y);
+                if(p.x>0 && p.x<w && p.y>0 && p.y<h) {
+                    mmCtx.fillRect(p.x-2, p.y-2, 4, 4);
+                }
+            }
+            // 门
+            let doorP = worldToMap(doorPos.x, doorPos.y);
+            mmCtx.font = "14px 'Segoe UI'";
+            mmCtx.fillStyle = '#f5bc70';
+            mmCtx.fillText("🚪", doorP.x-7, doorP.y-5);
+            // 追杀者 (红点)
+            let hunterP = worldToMap(hunterPos.x, hunterPos.y);
+            mmCtx.beginPath();
+            mmCtx.fillStyle = '#ff4444';
+            mmCtx.arc(hunterP.x, hunterP.y, 6, 0, Math.PI*2);
+            mmCtx.fill();
+            mmCtx.fillStyle = 'white';
+            mmCtx.font = "bold 12px monospace";
+            mmCtx.fillText("👹", hunterP.x-6, hunterP.y+5);
+            // 玩家 (绿点+标记)
+            let playerP = worldToMap(playerPos.x, playerPos.y);
+            mmCtx.beginPath();
+            mmCtx.fillStyle = '#66ff66';
+            mmCtx.arc(playerP.x, playerP.y, 7, 0, Math.PI*2);
+            mmCtx.fill();
+            mmCtx.fillStyle = '#006400';
+            mmCtx.font = "bold 12px monospace";
+            mmCtx.fillText("🙂", playerP.x-5, playerP.y+5);
+            
+            // 绘制视野指示框(相机视角)
+            let topLeft = worldToMap(camera.x, camera.y);
+            let bottomRight = worldToMap(camera.x+canvas.width, camera.y+canvas.height);
+            mmCtx.strokeStyle = '#ffd966';
+            mmCtx.lineWidth = 2;
+            mmCtx.strokeRect(topLeft.x, topLeft.y, bottomRight.x-topLeft.x, bottomRight.y-topLeft.y);
+        }
+        
+        // 游戏主循环
+        function gameLoop() {
+            if(gameRunning && !gameWinFlag) {
+                updatePlayerMovement();
+                updateHunter();
+                checkGameStatus();
+                updateCamera();
+                draw();
+                updateMiniMap();
+            } else if(gameWinFlag && !gameRunning){
+                draw();
+                updateMiniMap();
+            } else if(!gameRunning){
+                draw();
+                updateMiniMap();
+            }
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // ---------- 事件绑定: 移动 + 摄像机拖拽 + 小地图缩放 ----------
+        function getCanvasCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            let clientX, clientY;
+            if(e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            let canvasX = (clientX - rect.left) * scaleX;
+            let canvasY = (clientY - rect.top) * scaleY;
+            return { x: Math.min(Math.max(canvasX,0), canvas.width), y: Math.min(Math.max(canvasY,0), canvas.height) };
+        }
+        
+        function onPointerDown(e) {
+            e.preventDefault();
+            const coord = getCanvasCoords(e);
+            // 世界坐标
+            const worldX = coord.x + camera.x;
+            const worldY = coord.y + camera.y;
+            if(worldX > 0 && worldY > 0 && gameRunning && !gameWinFlag) {
+                isMoving = true;
+                moveTarget = { x: worldX, y: worldY };
+            }
+            // 摄像机拖拽 (双指或右键备选可以忽略，简单再做一个拖拽标志)
+            isDraggingView = true;
+            dragStart.x = e.clientX || e.touches[0].clientX;
+            dragStart.y = e.clientY || e.touches[0].clientY;
+            camStart.x = camera.x;
+            camStart.y = camera.y;
+        }
+        
+        function onPointerMove(e) {
+            if(!isDraggingView && !isMoving) return;
+            if(isDraggingView) {
+                let clientX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+                let clientY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+                let dx = (dragStart.x - clientX) * 1.2;
+                let dy = (dragStart.y - clientY) * 1.2;
+                let newCamX = camStart.x + dx;
+                let newCamY = camStart.y + dy;
+                camera.x = Math.min(Math.max(newCamX, 0), MAP_W - canvas.width);
+                camera.y = Math.min(Math.max(newCamY, 0), MAP_H - canvas.height);
+                draw();
+                updateMiniMap();
+            }
+            if(isMoving && gameRunning && !gameWinFlag) {
+                const coord = getCanvasCoords(e);
+                const worldX = coord.x + camera.x;
+                const worldY = coord.y + camera.y;
+                moveTarget = { x: worldX, y: worldY };
+            }
+        }
+        
+        function onPointerUp() {
+            isMoving = false;
+            isDraggingView = false;
+        }
+        
+        // 绑定事件 (鼠标+触控)
+        canvas.addEventListener('mousedown', onPointerDown);
+        window.addEventListener('mousemove', onPointerMove);
+        window.addEventListener('mouseup', onPointerUp);
+        canvas.addEventListener('touchstart', onPointerDown, {passive:false});
+        window.addEventListener('touchmove', onPointerMove, {passive:false});
+        window.addEventListener('touchend', onPointerUp);
+        
+        // 重置按钮
+        resetBtn.addEventListener('click', () => { fullReset(); });
+        document.getElementById('rematchBtn').addEventListener('click', () => {
+            document.getElementById('resultOverlay').classList.remove('active');
+            fullReset();
+        });
+        document.getElementById('lobbyBtn').addEventListener('click', () => {
+            document.getElementById('resultOverlay').classList.remove('active');
+            fullReset();
+        });
+        
+        // 小地图缩放与拖拽平移(可选, 简易版本: 缩放功能+重置偏移)
+        const zoomIn = document.getElementById('zoomInBtn');
+        const zoomOut = document.getElementById('zoomOutBtn');
+        zoomIn.addEventListener('click', () => {
+            minimapZoom = Math.min(ZOOM_MAX, minimapZoom + 0.2);
+            updateMiniMap();
+        });
+        zoomOut.addEventListener('click', () => {
+            minimapZoom = Math.max(ZOOM_MIN, minimapZoom - 0.2);
+            updateMiniMap();
+        });
+        // 让小地图可点击标记玩家位置(轻点小地图不移动视角但作为提醒)
+        minimapCanvas.addEventListener('click', (e) => {
+            updateMiniMap(); 
+        });
+        
+        // 启动游戏
+        initGame();
+        gameLoop();
+    })();
+</script>
+</body>
+</html>
