@@ -21,6 +21,40 @@
             width: 100%;
             height: 100%;
         }
+        
+        /* ========= 启动视频全屏样式 ========= */
+        .intro-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1000;
+            background: #000;
+        }
+        .skip-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(0,0,0,0.6);
+            color: #ffd966;
+            border: 1px solid #ffd966;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-family: system-ui;
+            font-size: 14px;
+            cursor: pointer;
+            z-index: 1001;
+            backdrop-filter: blur(4px);
+            transition: 0.2s;
+        }
+        .skip-btn:hover {
+            background: #ffd966;
+            color: #1a1a2a;
+        }
+        
+        /* ========= 游戏内容样式 ========= */
         #gameCanvas {
             position: absolute;
             top: 0;
@@ -31,7 +65,6 @@
             background: #2a5e2a;
             cursor: crosshair;
         }
-        /* 全图小地图 */
         .minimap-wrapper {
             position: fixed;
             top: 15px;
@@ -266,58 +299,107 @@
         }
         .diff-btn.active { background: #ffd966; color: #1f3a1a; border-color: white; }
         .exit-btn { background: #6a2e2e; color: #ffc6a0; box-shadow: 0 4px 0 #3e1a1a; }
+        
+        /* 游戏容器初始隐藏 */
+        .game-container {
+            display: none;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
     </style>
 </head>
 <body>
 
-<canvas id="gameCanvas"></canvas>
+<!-- ========= 全屏启动视频 ========= -->
+<video id="introVideo" class="intro-video" autoplay muted playsinline preload="auto">
+    <source src="https://raw.githubusercontent.com/3695594117/safaf/main/aaa.mp4" type="video/mp4">
+    您的浏览器不支持视频播放
+</video>
+<button class="skip-btn" id="skipBtn">⏩ 跳过动画</button>
 
-<div class="minimap-wrapper" id="minimapWrapper">
-    <canvas id="minimapCanvas" width="300" height="300"></canvas>
-    <div class="minimap-label">🗺️ 全图雷达 | 点击缩放/标记</div>
-</div>
+<!-- ========= 游戏主容器 ========= -->
+<div id="gameContainer" class="game-container">
+    <canvas id="gameCanvas"></canvas>
 
-<div class="hp-bar">❤️ <span id="hpValue">100</span> / 100</div>
-<div class="quest-info">🏆 胜利条件: 击杀小怪(<span id="mobKill">0</span>/20) 获得钥匙 → 触碰光门</div>
-<div class="key-status" id="keyStatus">🔑 钥匙: 未获得</div>
-<div class="ult-bar"><div class="ult-fill" id="ultFill"></div></div>
-<div class="ult-text" id="ultLabel">✨ 大招就绪</div>
+    <div class="minimap-wrapper" id="minimapWrapper">
+        <canvas id="minimapCanvas" width="300" height="300"></canvas>
+        <div class="minimap-label">🗺️ 全图雷达 | 点击缩放/标记</div>
+    </div>
 
-<div class="joystick-container" id="joystickContainer">
-    <div class="joystick-thumb" id="joystickThumb"></div>
-</div>
+    <div class="hp-bar">❤️ <span id="hpValue">100</span> / 100</div>
+    <div class="quest-info">🏆 胜利条件: 击杀小怪(<span id="mobKill">0</span>/20) 获得钥匙 → 触碰光门</div>
+    <div class="key-status" id="keyStatus">🔑 钥匙: 未获得</div>
+    <div class="ult-bar"><div class="ult-fill" id="ultFill"></div></div>
+    <div class="ult-text" id="ultLabel">✨ 大招就绪</div>
 
-<div class="btn-group">
-    <button class="action-btn" id="attackBtn">🗡️</button>
-    <button class="action-btn skill-btn" id="ultraBtn">✨</button>
-</div>
-<div class="pc-hint">🖱️ 鼠标瞄准 | E/Q攻击/大招 | M 地图 | 地图点击标记</div>
+    <div class="joystick-container" id="joystickContainer">
+        <div class="joystick-thumb" id="joystickThumb"></div>
+    </div>
 
-<div id="lobbyOverlay" class="menu-overlay">
-    <div class="menu-card">
-        <div class="game-title">🔪 狩灵神殿 🔪</div>
-        <div class="menu-buttons">
-            <button id="startGameBtn" class="menu-btn">⚔️ 开始游戏 ⚔️</button>
-            <button id="exitGameBtn" class="menu-btn exit-btn">🚪 退出游戏</button>
+    <div class="btn-group">
+        <button class="action-btn" id="attackBtn">🗡️</button>
+        <button class="action-btn skill-btn" id="ultraBtn">✨</button>
+    </div>
+    <div class="pc-hint">🖱️ 鼠标瞄准 | E/Q攻击/大招 | M 地图 | 地图点击标记</div>
+
+    <div id="lobbyOverlay" class="menu-overlay">
+        <div class="menu-card">
+            <div class="game-title">🔪 狩灵神殿 🔪</div>
+            <div class="menu-buttons">
+                <button id="startGameBtn" class="menu-btn">⚔️ 开始游戏 ⚔️</button>
+                <button id="exitGameBtn" class="menu-btn exit-btn">🚪 退出游戏</button>
+            </div>
+            <div style="color:#ffdfaa;">⚡ 难度 ⚡</div>
+            <div class="difficulty-row">
+                <button data-diff="low" class="diff-btn active">🐾 低</button>
+                <button data-diff="medium" class="diff-btn">⚡ 中</button>
+                <button data-diff="high" class="diff-btn">🔥 高</button>
+            </div>
+            <p style="font-size: 11px; margin-top: 18px;">👆 左摇杆移动 | 击败20小怪获得钥匙 → 触碰光门</p>
         </div>
-        <div style="color:#ffdfaa;">⚡ 难度 ⚡</div>
-        <div class="difficulty-row">
-            <button data-diff="low" class="diff-btn active">🐾 低</button>
-            <button data-diff="medium" class="diff-btn">⚡ 中</button>
-            <button data-diff="high" class="diff-btn">🔥 高</button>
-        </div>
-        <p style="font-size: 11px; margin-top: 18px;">👆 左摇杆移动 | 击败20小怪获得钥匙 → 触碰光门</p>
     </div>
 </div>
 
-<!-- 网易云音乐ID:365223550 (需要用户交互才能播放) -->
-<audio id="bgmAudio" loop preload="auto" style="display:none;">
-    <source src="https://music.163.com/song/media/outer/url?id=365223550.mp3" type="audio/mpeg">
-</audio>
-
 <script>
     (function(){
-        // ---------- 世界配置 ----------
+        // ========= 视频启动控制 =========
+        const video = document.getElementById('introVideo');
+        const gameContainer = document.getElementById('gameContainer');
+        const skipBtn = document.getElementById('skipBtn');
+        let gameStarted = false;
+        
+        function startGame() {
+            if (gameStarted) return;
+            gameStarted = true;
+            
+            video.style.transition = 'opacity 0.4s ease';
+            video.style.opacity = '0';
+            skipBtn.style.transition = 'opacity 0.3s ease';
+            skipBtn.style.opacity = '0';
+            
+            setTimeout(() => {
+                video.style.display = 'none';
+                skipBtn.style.display = 'none';
+                gameContainer.style.display = 'block';
+            }, 400);
+        }
+        
+        video.addEventListener('ended', startGame);
+        skipBtn.addEventListener('click', startGame);
+        
+        // 视频加载失败时，5秒后自动进入
+        video.addEventListener('error', function() {
+            console.warn('视频加载失败，5秒后自动进入游戏');
+            setTimeout(startGame, 5000);
+        });
+        
+        // 后备：视频时长1分35秒 = 95秒，设置100秒强制进入（防止卡住）
+        setTimeout(() => {
+            if (!gameStarted) startGame();
+        }, 100000);
+        
+        // ========= 世界配置 =========
         const MAP_W = 4200;
         const MAP_H = 3400;
         const PLAYER_RADIUS = 32;
@@ -328,8 +410,8 @@
         let normalKills = 0;
         let bossDefeated = false;
         let gameActive = true;
-        let hasKey = false;          // 击杀20小怪获得钥匙
-        let door = { x: 0, y: 0 };   // 门的位置（获得钥匙后显示）
+        let hasKey = false;
+        let door = { x: 0, y: 0 };
         let doorVisible = false;
         let currentDifficulty = "medium";
         let hunterSpeedBase = 2.2;
@@ -341,8 +423,6 @@
         let aimDir = { x: 1, y: 0 };
         let hitEffects = [];
         let slowMap = new Map();
-        
-        // 小地图标记
         let markerPoint = { x: null, y: null };
         
         // 图片资源
@@ -382,25 +462,6 @@
         let dragTarget = { x: player.x, y: player.y };
         let joystickThumb = document.getElementById('joystickThumb');
         let joystickCenter = { x:0, y:0 };
-        
-        // 音乐（需要手动交互启动）
-        let bgmAudio = document.getElementById('bgmAudio');
-        let musicStarted = false;
-        function requestMusicPlay() {
-            if(!musicStarted) {
-                musicStarted = true;
-                bgmAudio.play().catch(e=>console.log("音频自动播放受限，已由用户交互激活"));
-            }
-        }
-        function bindMusicToUser() {
-            const events = ['click', 'touchstart', 'keydown'];
-            events.forEach(ev => {
-                window.addEventListener(ev, function once() {
-                    requestMusicPlay();
-                    events.forEach(e => window.removeEventListener(e, once));
-                }, { once: true });
-            });
-        }
         
         // ---------- 核心逻辑 ----------
         function updateUI(){
@@ -462,7 +523,6 @@
                             if(normalKills >= 20 && !hasKey){
                                 hasKey = true;
                                 doorVisible = true;
-                                // 门随机生成在离玩家较远位置
                                 let angle = Math.random() * Math.PI*2;
                                 let rad = 900 + Math.random()*700;
                                 door.x = player.x + Math.cos(angle)*rad;
@@ -523,7 +583,6 @@
         }
         
         function gameOver(isWin){ gameActive = false; alert(isWin ? "✨ 胜利！ ✨" : "💀 被击败了 💀"); showLobby(); }
-        function checkWinCondition(){ if(!gameActive) return; if(bossDefeated || (normalKills>=20 && hasKey)) { /*胜利由触碰门触发*/ } }
         function updateCooldowns(){ if(attackCd > 0) attackCd--; if(ultCooldown > 0){ ultCooldown--; updateUI(); } }
         
         function updatePlayerMove(){
@@ -570,13 +629,12 @@
             bossDefeated = false; normalKills = 0; gameActive = true; hasKey = false; doorVisible = false; 
             projectiles = []; attackCd = 0; ultCooldown = 0; hitEffects = []; slowMap.clear(); markerPoint = { x: null, y: null };
             updateUI(); applyDifficulty();
-            requestMusicPlay();
         }
         
-        function showLobby(){ document.getElementById('lobbyOverlay').style.display = 'flex'; gameActive = false; if(bgmAudio) bgmAudio.pause(); musicStarted=false; }
+        function showLobby(){ document.getElementById('lobbyOverlay').style.display = 'flex'; gameActive = false; }
         function hideLobby(){ document.getElementById('lobbyOverlay').style.display = 'none'; resetGameSession(); }
         
-        // 全图小地图绘制 (树木/小怪/BOSS/门/钥匙标记)
+        // 全图小地图绘制
         function drawFullMinimap(){
             const w = minimapCanvas.width, h = minimapCanvas.height;
             mmCtx.clearRect(0,0,w,h);
@@ -671,7 +729,6 @@
             if(len > 0.01){ aimDir.x = dx/len; aimDir.y = dy/len; }
         }
         
-        // 主要绘图
         function drawBackground(){
             ctx.fillStyle = '#346b34'; ctx.fillRect(0,0,canvas.width,canvas.height);
             for(let t of trees){
@@ -737,17 +794,17 @@
         minimapWrap.addEventListener('click', (e)=>{ if(e.target === minimapCanvas || e.target.closest('#minimapCanvas')) onMinimapClick(e); else toggleMinimap(); });
         window.addEventListener('keydown', (e)=>{
             if(e.key === 'm' || e.key === 'M') toggleMinimap();
-            if(e.key === 'e' || e.key === 'E'){ e.preventDefault(); normalAttack(); requestMusicPlay(); }
-            if(e.key === 'q' || e.key === 'Q'){ e.preventDefault(); castUltimate(); requestMusicPlay(); }
+            if(e.key === 'e' || e.key === 'E'){ e.preventDefault(); normalAttack(); }
+            if(e.key === 'q' || e.key === 'Q'){ e.preventDefault(); castUltimate(); }
         });
         canvas.addEventListener('mousemove', onMouseMove);
         canvas.addEventListener('mousedown', onDragStart);
         window.addEventListener('mousemove', onDragMove);
         window.addEventListener('mouseup', onDragEnd);
-        canvas.addEventListener('touchstart', (e)=>{ onMouseMove(e.touches[0]); onDragStart(e); requestMusicPlay(); });
+        canvas.addEventListener('touchstart', (e)=>{ onMouseMove(e.touches[0]); onDragStart(e); });
         
-        initJoystick(); resizeCanvas(); showLobby(); bindMusicToUser();
-        document.getElementById('startGameBtn').onclick = ()=>{ hideLobby(); requestMusicPlay(); };
+        initJoystick(); resizeCanvas(); showLobby();
+        document.getElementById('startGameBtn').onclick = ()=>{ hideLobby(); };
         document.getElementById('exitGameBtn').onclick = ()=>{ if(confirm("退出游戏？")) window.close?.(); alert("手动关闭页面"); };
         document.querySelectorAll('.diff-btn').forEach(btn=>{
             btn.onclick = ()=>{
